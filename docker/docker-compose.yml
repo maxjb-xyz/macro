@@ -62,7 +62,7 @@ services:
 
   # ============================================================================
   # connection_gateway (Port 8082)
-  # WebSocket gateway - Redis only
+  # WebSocket gateway - Redis and DynamoDB
   # ============================================================================
   connection_gateway:
     <<: [*common-env, *rust-services-image]
@@ -71,6 +71,8 @@ services:
       - "8080"
     depends_on:
       redis:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     networks:
       databases:
@@ -188,9 +190,14 @@ services:
       LOCAL_AWS_URL: ${LOCAL_AWS_URL:-http://localstack:4566}
       DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL: ${DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL:-http://localstack:4566/000000000000/document-upload-finalizer-queue}
     depends_on:
-      - postgres
-      - sync_service
-      - lexical_service
+      postgres:
+        condition: service_started
+      sync_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - databases
       - services
@@ -205,11 +212,18 @@ services:
     expose:
       - "8080"
     depends_on:
-      - authentication-service
-      - document_storage_service
-      - connection_gateway
-      - static_file_service
-      - redis
+      authentication-service:
+        condition: service_started
+      document_storage_service:
+        condition: service_started
+      connection_gateway:
+        condition: service_started
+      static_file_service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -232,13 +246,22 @@ services:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/pubsub_workers"]
     depends_on:
-      - postgres
-      - redis
-      - authentication-service
-      - document_storage_service
-      - connection_gateway
-      - static_file_service
-      - email_service
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      authentication-service:
+        condition: service_started
+      document_storage_service:
+        condition: service_started
+      connection_gateway:
+        condition: service_started
+      static_file_service:
+        condition: service_started
+      email_service:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - databases
       - services
@@ -256,11 +279,18 @@ services:
       LAST_ONLINE_REDIS_URI: ${LAST_ONLINE_REDIS_URI:-${REDIS_URI:-redis://redis:6379}}
       OVERRIDE_CONNECTION_GATEWAY_URL: http://connection-gateway:8080
     depends_on:
-      - redis
-      - document_cognition_service
-      - authentication-service
-      - connection_gateway
-      - document_storage_service
+      redis:
+        condition: service_healthy
+      document_cognition_service:
+        condition: service_started
+      authentication-service:
+        condition: service_started
+      connection_gateway:
+        condition: service_started
+      document_storage_service:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -308,6 +338,9 @@ services:
     command: ["/app/out/static_file_service"]
     expose:
       - "8080"
+    depends_on:
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
