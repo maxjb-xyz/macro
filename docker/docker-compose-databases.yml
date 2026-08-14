@@ -38,17 +38,10 @@ services:
     volumes:
       - ../crates/macro_db_client/migrations:/migrations:ro
       - ./selfhost/migrate-macrodb.sh:/migrate.sh:ro
+      - ./selfhost/bootstrap-macrodb.sh:/bootstrap.sh:ro
     command:
-      - sh
-      - -c
-      - |
-        set -eu
-        if ! psql -h postgres -U user -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'macrodb'" | grep -q 1; then
-          createdb -h postgres -U user macrodb
-          /bin/bash /migrate.sh
-        else
-          echo "macrodb already exists — skipping migrations (assume migrated)"
-        fi
+      - /bin/bash
+      - /bootstrap.sh
     networks:
       - databases
   redis:

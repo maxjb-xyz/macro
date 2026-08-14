@@ -9,6 +9,7 @@ WORKDIR /app/services/ai-editing-worker
 EXPOSE 8933
 
 CMD ["sh", "-c", "\
+  bun install >/dev/null 2>&1 || true; \
   bun scripts/generate-sandbox.ts && \
   printf 'OPENAI_API_KEY=%s\\nANTHROPIC_API_KEY=%s\\nCEREBRAS_API_KEY=%s\\n' \
     \"${OPENAI_API_KEY}\" \
