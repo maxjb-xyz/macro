@@ -9,7 +9,7 @@
 mod test;
 
 use std::marker::PhantomData;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use either::Either;
 use macro_env::Environment;
@@ -27,6 +27,8 @@ mod msk_iam;
 const UNGROUPED_GROUP_PREFIX: &str = "macro-event-broker-independent";
 const MESSAGE_TIMEOUT_MS: &str = "5000";
 const SEND_TIMEOUT: Duration = Duration::from_secs(5);
+const ASSIGNMENT_METADATA_ATTEMPT_TIMEOUT: Duration = Duration::from_secs(2);
+const ASSIGNMENT_RETRY_DELAY: Duration = Duration::from_millis(500);
 
 /// Failure to construct an environment-specific Kafka consumer.
 #[derive(Debug, thiserror::Error)]
@@ -236,6 +238,10 @@ where
     Ok(assignment)
 }
 
+fn next_assignment_metadata_timeout(remaining: Duration) -> Duration {
+    remaining.min(ASSIGNMENT_METADATA_ATTEMPT_TIMEOUT)
+}
+
 impl KafkaEventProducer {
     /// Creates a producer, selecting plaintext or MSK IAM transport from the runtime environment.
     ///
@@ -325,13 +331,55 @@ impl KafkaEventConsumer<Ungrouped> {
             let mut context = std::task::Context::from_waker(waker);
             let _ = std::future::Future::poll(recv.as_mut(), &mut context);
 
-            let assignment = build_assignment(
-                consumer,
-                topics,
-                initial_offset,
-                metadata_timeout,
-            )?;
-            consumer.assign(&assignment)
+            let deadline = Instant::now() + metadata_timeout;
+            let mut attempts = 0_u32;
+
+            loop {
+                attempts += 1;
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return build_assignment(
+                        consumer,
+                        topics,
+                        initial_offset,
+                        ASSIGNMENT_METADATA_ATTEMPT_TIMEOUT,
+                    )
+                    .and_then(|assignment| consumer.assign(&assignment));
+                }
+
+                let result = build_assignment(
+                    consumer,
+                    topics,
+                    initial_offset,
+                    next_assignment_metadata_timeout(remaining),
+                )
+                .and_then(|assignment| consumer.assign(&assignment));
+
+                match result {
+                    Ok(()) => {
+                        if attempts > 1 {
+                            tracing::info!(
+                                attempts,
+                                topics = ?topics,
+                                "assigned Kafka topic partitions after retry"
+                            );
+                        }
+                        return Ok(());
+                    }
+                    Err(error) if Instant::now() < deadline => {
+                        tracing::warn!(
+                            ?error,
+                            attempts,
+                            topics = ?topics,
+                            "Kafka topic metadata unavailable while assigning partitions; retrying"
+                        );
+                        std::thread::sleep(ASSIGNMENT_RETRY_DELAY.min(
+                            deadline.saturating_duration_since(Instant::now()),
+                        ));
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
         })
     }
 }

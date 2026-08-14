@@ -28,7 +28,7 @@ use crate::domain::{
 };
 
 /// Maximum time to wait for notification topic metadata during partition assignment.
-const TOPIC_METADATA_TIMEOUT: Duration = Duration::from_secs(10);
+const TOPIC_METADATA_TIMEOUT: Duration = Duration::from_secs(60);
 
 type IndependentKafkaConsumer = KafkaConsumerAdapter<Ungrouped, DeclaredMacroEvent>;
 type NotificationEventConsumer =

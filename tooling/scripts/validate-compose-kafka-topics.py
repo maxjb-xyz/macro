@@ -14,6 +14,9 @@ TOPICS_MANIFEST = ROOT / ".github/kafka-cluster-topics.json"
 ROOT_COMPOSE = ROOT / "compose.yml"
 DATABASES_COMPOSE = ROOT / "docker/docker-compose-databases.yml"
 APP_COMPOSE = ROOT / "docker/docker-compose.yml"
+KAFKA_UTIL = ROOT / "crates/kafka_util/src/lib.rs"
+NOTIFICATION_CONSUMER = ROOT / "crates/notification/src/outbound/notification_consumer.rs"
+SOUP_CONSUMER = ROOT / "crates/soup_realtime/src/outbound/soup_consumer.rs"
 
 
 def fail(message: str) -> None:
@@ -33,6 +36,9 @@ def main() -> None:
     databases_compose = DATABASES_COMPOSE.read_text()
     app_compose = APP_COMPOSE.read_text()
     root_compose = ROOT_COMPOSE.read_text()
+    kafka_util = KAFKA_UTIL.read_text()
+    notification_consumer = NOTIFICATION_CONSUMER.read_text()
+    soup_consumer = SOUP_CONSUMER.read_text()
 
     if "docker/docker-compose.yml" not in root_compose:
         fail("root compose.yml must include docker/docker-compose.yml")
@@ -68,9 +74,27 @@ def main() -> None:
     if topic_dependencies < 7 or app_compose.count("kafka_topics:") < 7:
         fail("expected Kafka-backed app services to depend on kafka_topics completion")
 
+    runtime_fragments = [
+        "ASSIGNMENT_METADATA_ATTEMPT_TIMEOUT",
+        "ASSIGNMENT_RETRY_DELAY",
+        "Kafka topic metadata unavailable while assigning partitions; retrying",
+        "assigned Kafka topic partitions after retry",
+    ]
+    for fragment in runtime_fragments:
+        if fragment not in kafka_util:
+            fail(f"kafka_util ungrouped assignment retry is missing {fragment!r}")
+
+    for name, source in [
+        ("notification", notification_consumer),
+        ("soup realtime", soup_consumer),
+    ]:
+        if "TOPIC_METADATA_TIMEOUT: Duration = Duration::from_secs(60)" not in source:
+            fail(f"{name} consumer must allow a 60 second startup metadata window")
+
     print(
         "Compose Kafka topic validation passed "
-        f"({len(actual_topics)} topics, {app_compose.count('kafka_topics:')} service dependencies)"
+        f"({len(actual_topics)} topics, {app_compose.count('kafka_topics:')} service dependencies, "
+        "runtime assignment retry enabled)"
     )
 
 

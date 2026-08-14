@@ -51,3 +51,15 @@ fn ungrouped_initial_offsets_are_explicit() {
     assert_eq!(InitialOffset::Earliest.as_kafka_offset(), Offset::Beginning);
     assert_eq!(InitialOffset::Latest.as_kafka_offset(), Offset::End);
 }
+
+#[test]
+fn assignment_metadata_attempt_timeout_is_bounded_by_remaining_startup_window() {
+    assert_eq!(
+        next_assignment_metadata_timeout(Duration::from_millis(250)),
+        Duration::from_millis(250)
+    );
+    assert_eq!(
+        next_assignment_metadata_timeout(Duration::from_secs(30)),
+        ASSIGNMENT_METADATA_ATTEMPT_TIMEOUT
+    );
+}
