@@ -64,7 +64,7 @@ tooling/scripts/self-host-smoke.sh
 ```
 
 The wrapper runs the cheap Compose checks, starts the stack with
-`docker compose up -d`, captures status/log/resource artifacts under
+`docker compose up -d --wait`, captures status/log/resource artifacts under
 `artifacts/self-host-smoke/`, and leaves the stack running for browser checks.
 Use `tooling/scripts/self-host-smoke.sh --down` when you only need machine
 artifacts and want the stack reclaimed automatically. `just self-host-smoke` is
@@ -148,16 +148,13 @@ The smoke wrapper writes one file per command under
 validation notes for the PR or sync:
 
 - `compose-config.out` proves the base Compose topology resolves.
-- `compose-up.out` records the direct `docker compose up -d` operator startup.
+- `compose-up.out` records the direct `docker compose up -d --wait` operator startup.
 - `compose-ps.out` records container state.
 - `resource-names.txt`, `docker-network-inspect.out`, and
   `docker-volume-inspect.out` record the deterministic Compose project,
   networks, and volumes.
 - `docker-ps.out` and `docker-logs.out` capture runtime evidence for follow-up
   debugging.
-- When `just` and `cargo` are installed, optional `validate-local-compose.out`,
-  `validate-local-env.out`, `seed-apply.out`, `seed-status.out`, and
-  `seed-matrix.out` artifacts may be present as contributor evidence.
 
 After `tooling/scripts/self-host-smoke.sh` succeeds, use the published Compose
 ports to complete the browser checks in `manual-smoke-checklist.md`:

@@ -36,6 +36,11 @@ services:
       - '8001:8001' # Expose Redis Stack Server UI/tools
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
     volumes:
       - cache:/data
     networks:

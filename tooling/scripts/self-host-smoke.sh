@@ -5,7 +5,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ARTIFACTS_DIR=""
 SKIP_STACK=false
 KEEP_STACK=true
-SCENARIO_FILE="tooling/seed_cli/seed/scenarios/team-perms.json"
 COMPOSE_FILE="docker/docker-compose.yml"
 PROJECT_NAME="macro"
 ENV_FILE=".env"
@@ -19,14 +18,13 @@ capture operator evidence under artifacts/self-host-smoke/.
 
 Options:
   --artifacts-dir DIR    Evidence output directory
-  --scenario-file FILE   Optional seed scenario path (default: tooling/seed_cli/seed/scenarios/team-perms.json)
   --env-file FILE        Compose env file (default: .env; .env.example is used when .env is absent)
   --skip-stack           Only run cheap static checks; do not start Docker stack
   --down                 Tear the stack down after capture
   -h, --help             Show this help
 
 Operators only need Docker with the Compose plugin. Nix, Rust, Cargo, and Just
-are optional contributor conveniences and are never required by this wrapper.
+are never required by this wrapper.
 USAGE
 }
 
@@ -34,10 +32,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --artifacts-dir)
       ARTIFACTS_DIR="${2:?missing value for --artifacts-dir}"
-      shift 2
-      ;;
-    --scenario-file)
-      SCENARIO_FILE="${2:?missing value for --scenario-file}"
       shift 2
       ;;
     --env-file)
@@ -74,6 +68,11 @@ mkdir -p "$ARTIFACTS_DIR"
 if [[ ! -f "$ENV_FILE" && -f .env.example ]]; then
   ENV_FILE=".env.example"
 fi
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "env file not found: $ENV_FILE" | tee -a "$ARTIFACTS_DIR/blockers.txt" >&2
+  exit 64
+fi
+ENV_FILE="$(cd "$(dirname "$ENV_FILE")" && pwd)/$(basename "$ENV_FILE")"
 COMPOSE=(env "MACRO_ENV_FILE=$ENV_FILE" docker compose --project-directory . -f "$COMPOSE_FILE" --env-file "$ENV_FILE")
 
 run_capture() {
@@ -106,7 +105,6 @@ require_tool() {
 {
   echo "compose_file=$COMPOSE_FILE"
   echo "compose_project=$PROJECT_NAME"
-  echo "scenario_file=$SCENARIO_FILE"
   echo "env_file=$ENV_FILE"
   echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   git rev-parse HEAD 2>/dev/null | sed 's/^/commit=/' || true
@@ -122,22 +120,13 @@ if command -v git >/dev/null 2>&1; then
 fi
 run_capture compose-config "${COMPOSE[@]}" config
 
-if command -v cargo >/dev/null 2>&1; then
-  run_capture_allow_failure validate-local-compose cargo run --quiet --manifest-path Cargo.toml -p xtask_local --features local-stack -- validate-local-compose || true
-  run_capture_allow_failure validate-local-env cargo run --quiet --manifest-path Cargo.toml -p xtask_local --features local-stack -- validate-local-env --no-doppler || true
-fi
-
-if command -v nix >/dev/null 2>&1; then
-  run_capture_allow_failure nix-flake-metadata nix flake metadata --no-write-lock-file || true
-fi
-
 if [[ "$SKIP_STACK" == "true" ]]; then
   echo "skip_stack=true" >>"$ARTIFACTS_DIR/summary.env"
   echo "Static checks complete. Artifacts: $ARTIFACTS_DIR"
   exit 0
 fi
 
-run_capture compose-up "${COMPOSE[@]}" up -d
+run_capture compose-up "${COMPOSE[@]}" up -d --wait --wait-timeout 120
 run_capture compose-ps "${COMPOSE[@]}" ps
 
 {
@@ -158,12 +147,6 @@ run_capture_allow_failure docker-ps docker ps --filter "label=com.docker.compose
 run_capture_allow_failure docker-network-inspect docker network inspect databases auth macro_services || true
 run_capture_allow_failure docker-volume-inspect docker volume inspect macro_postgres_data macro_redis_data macro_opensearch_data macro_kafka_data fusionauth_db_data fusionauth_config || true
 run_capture_allow_failure docker-logs "${COMPOSE[@]}" logs --no-color --tail 200 || true
-
-if command -v just >/dev/null 2>&1 && command -v cargo >/dev/null 2>&1 && [[ -f "$SCENARIO_FILE" ]]; then
-  run_capture_allow_failure seed-apply just seed-scenario apply --file "$SCENARIO_FILE" || true
-  run_capture_allow_failure seed-status just seed-scenario status --file "$SCENARIO_FILE" || true
-  run_capture_allow_failure seed-matrix just seed-scenario matrix --file "$SCENARIO_FILE" || true
-fi
 
 cat >"$ARTIFACTS_DIR/manual-smoke-checklist.md" <<EOF
 # Manual Phase 1 Browser Smoke
