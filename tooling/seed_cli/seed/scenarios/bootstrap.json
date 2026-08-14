@@ -1,0 +1,35 @@
+{
+  "scenario": "selfhost-bootstrap",
+  "description": "Minimal self-host bootstrap: one admin user, a team workspace, a general channel, a welcome document, and a starter message. Safe to re-run (ids are deterministic and the scenario's own rows are reset before re-seeding).",
+  "users": {
+    "admin": {
+      "email": "admin@seed.macro.local",
+      "first_name": "Admin",
+      "last_name": "User",
+      "roles": ["professional_subscriber"]
+    }
+  },
+  "teams": {
+    "workspace": {
+      "name": "My Workspace",
+      "owner": "admin"
+    }
+  },
+  "channels": {
+    "general": {
+      "type": "public",
+      "owner": "admin",
+      "name": "general"
+    }
+  },
+  "documents": {
+    "welcome": {
+      "owner": "admin",
+      "name": "Welcome",
+      "content": "# Welcome to Macro\n\nThis is your self-hosted workspace.\n\n- Create documents and tasks\n- Chat with your team in channels\n- @mention anything to link it into your workspace\n"
+    }
+  },
+  "messages": [
+    { "channel": "general", "from": "admin", "text": "Welcome to Macro! Your workspace is ready." }
+  ]
+}

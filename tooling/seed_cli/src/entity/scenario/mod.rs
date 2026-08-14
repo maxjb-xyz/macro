@@ -20,6 +20,7 @@ const LOCAL_E2E_RESET_SQL: &str = include_str!("../../../seed/local_e2e/reset.sq
 const LOCAL_E2E_USERS_JSON: &str = include_str!("../../../seed/local_e2e/users.json");
 const LOCAL_E2E_CHANNEL_MESSAGES_SQL: &str =
     include_str!("../../../seed/local_e2e/channel_messages.sql");
+const BOOTSTRAP_SCENARIO_JSON: &str = include_str!("../../../seed/scenarios/bootstrap.json");
 
 #[derive(Debug, Deserialize)]
 struct LocalE2eManifest {
@@ -241,6 +242,15 @@ pub struct MatrixScenarioArgs {
     pub expected_only: bool,
 }
 
+/// Arguments for the self-host bootstrap scenario.
+#[derive(Debug, Args)]
+pub struct BootstrapScenarioArgs {
+    /// Path to a scenario JSON file. Defaults to the bundled self-host
+    /// bootstrap scenario (admin + workspace + document + channel).
+    #[arg(long)]
+    pub file: Option<String>,
+}
+
 /// Available seed scenarios.
 #[derive(Debug, Subcommand)]
 pub enum ScenarioCommand {
@@ -256,6 +266,10 @@ pub enum ScenarioCommand {
     /// Report which of a scenario's rows are present and re-print the
     /// persona login links (read-only).
     Status(StatusScenarioArgs),
+    /// Run migrations (idempotent) and apply the bundled self-host bootstrap
+    /// scenario (admin user + workspace + document + channel). Gated by
+    /// `SEED_BOOTSTRAP=true`; intended for the one-shot Compose seed service.
+    Bootstrap(BootstrapScenarioArgs),
 }
 
 impl ScenarioArgs {
@@ -271,6 +285,9 @@ impl ScenarioArgs {
             ScenarioCommand::Matrix(_) | ScenarioCommand::Status(_) => {
                 validate_scenario_database_url(env_vars.database_url.as_ref())
             }
+            ScenarioCommand::Bootstrap(_) => {
+                validate_bootstrap_environment(env_vars.database_url.as_ref())
+            }
         }
     }
 
@@ -282,59 +299,95 @@ impl ScenarioArgs {
             ScenarioCommand::Reset(args) => reset_scenario(&ctx, &args).await,
             ScenarioCommand::Matrix(args) => matrix_scenario(&ctx, &args).await,
             ScenarioCommand::Status(args) => status_scenario(&ctx, &args).await,
+            ScenarioCommand::Bootstrap(args) => bootstrap_scenario(&ctx, &args).await,
         }
     }
 
-    /// Run destructive pre-connection setup (`apply --force` drops and
-    /// re-migrates the database) before the CLI opens its connection pool.
+    /// Run destructive pre-connection setup before the CLI opens its
+    /// connection pool: `apply --force` drops and re-migrates the database,
+    /// `bootstrap` ensures the database exists and runs migrations.
     #[allow(clippy::disallowed_methods, reason = "seed-only dynamic SQL")]
     pub async fn pre_connect(&self, database_url: &str) -> anyhow::Result<()> {
-        let ScenarioCommand::Apply(args) = &self.command else {
-            return Ok(());
-        };
-        if !args.force {
-            return Ok(());
+        match &self.command {
+            ScenarioCommand::Apply(args) if args.force => {
+                force_reset_and_migrate(database_url).await
+            }
+            ScenarioCommand::Bootstrap(_) => bootstrap_migrations(database_url).await,
+            _ => Ok(()),
         }
-
-        use sqlx::migrate::MigrateDatabase;
-
-        if !sqlx::Postgres::database_exists(database_url)
-            .await
-            .unwrap_or(false)
-        {
-            sqlx::Postgres::create_database(database_url)
-                .await
-                .context("creating database")?;
-        }
-
-        // Reset the schema rather than dropping the database: the running
-        // services hold connection pools that reconnect instantly, which
-        // makes DROP DATABASE lose its termination race. Dropping the
-        // schema wipes every table (and the migrations ledger) while the
-        // connections survive.
-        println!("--force: resetting the local database schema");
-        let pool = sqlx::PgPool::connect(database_url)
-            .await
-            .context("connecting for schema reset")?;
-        for statement in [
-            "DROP SCHEMA public CASCADE",
-            "CREATE SCHEMA public",
-            "GRANT ALL ON SCHEMA public TO PUBLIC",
-        ] {
-            sqlx::query(statement)
-                .execute(&pool)
-                .await
-                .with_context(|| format!("running `{statement}`"))?;
-        }
-
-        println!("--force: running migrations");
-        macro_db_migrator::MACRO_DB_MIGRATIONS
-            .run(&pool)
-            .await
-            .context("running migrations")?;
-        pool.close().await;
-        Ok(())
     }
+}
+
+/// `apply --force`: reset the schema and re-run migrations before the CLI
+/// opens its connection pool (destructive; destroys ALL local data).
+#[allow(clippy::disallowed_methods, reason = "seed-only dynamic SQL")]
+async fn force_reset_and_migrate(database_url: &str) -> anyhow::Result<()> {
+    use sqlx::migrate::MigrateDatabase;
+
+    if !sqlx::Postgres::database_exists(database_url)
+        .await
+        .unwrap_or(false)
+    {
+        sqlx::Postgres::create_database(database_url)
+            .await
+            .context("creating database")?;
+    }
+
+    // Reset the schema rather than dropping the database: the running
+    // services hold connection pools that reconnect instantly, which
+    // makes DROP DATABASE lose its termination race. Dropping the
+    // schema wipes every table (and the migrations ledger) while the
+    // connections survive.
+    println!("--force: resetting the local database schema");
+    let pool = sqlx::PgPool::connect(database_url)
+        .await
+        .context("connecting for schema reset")?;
+    for statement in [
+        "DROP SCHEMA public CASCADE",
+        "CREATE SCHEMA public",
+        "GRANT ALL ON SCHEMA public TO PUBLIC",
+    ] {
+        sqlx::query(statement)
+            .execute(&pool)
+            .await
+            .with_context(|| format!("running `{statement}`"))?;
+    }
+
+    println!("--force: running migrations");
+    macro_db_migrator::MACRO_DB_MIGRATIONS
+        .run(&pool)
+        .await
+        .context("running migrations")?;
+    pool.close().await;
+    Ok(())
+}
+
+/// Self-host bootstrap: ensure the database exists and run migrations.
+/// Idempotent — sqlx records applied migrations, so re-running on a restart
+/// is a no-op.
+#[allow(clippy::disallowed_methods, reason = "seed-only dynamic SQL")]
+async fn bootstrap_migrations(database_url: &str) -> anyhow::Result<()> {
+    use sqlx::migrate::MigrateDatabase;
+
+    if !sqlx::Postgres::database_exists(database_url)
+        .await
+        .unwrap_or(false)
+    {
+        sqlx::Postgres::create_database(database_url)
+            .await
+            .context("creating database")?;
+    }
+
+    println!("bootstrap: running migrations (idempotent)");
+    let pool = sqlx::PgPool::connect(database_url)
+        .await
+        .context("connecting for migrations")?;
+    macro_db_migrator::MACRO_DB_MIGRATIONS
+        .run(&pool)
+        .await
+        .context("running migrations")?;
+    pool.close().await;
+    Ok(())
 }
 
 fn load_scenario(file: &str) -> anyhow::Result<spec::ScenarioSpec> {
@@ -347,6 +400,46 @@ fn load_scenario(file: &str) -> anyhow::Result<spec::ScenarioSpec> {
 async fn apply_scenario(ctx: &SeedCliContext, args: &ApplyScenarioArgs) -> anyhow::Result<()> {
     let scenario = load_scenario(&args.file)?;
     apply::apply(ctx, &scenario, &seed_path("seed")).await
+}
+
+/// Apply the self-host bootstrap scenario: the bundled default, or a
+/// `--file` scenario, with the operator's admin overrides applied.
+async fn bootstrap_scenario(
+    ctx: &SeedCliContext,
+    args: &BootstrapScenarioArgs,
+) -> anyhow::Result<()> {
+    let scenario = match args.file.as_deref() {
+        Some(file) => load_scenario(file)?,
+        None => {
+            let mut spec = spec::ScenarioSpec::parse(BOOTSTRAP_SCENARIO_JSON)?;
+            apply_admin_overrides(&mut spec);
+            spec
+        }
+    };
+    apply::apply(ctx, &scenario, &seed_path("seed")).await
+}
+
+/// Point the bundled bootstrap's `admin` user at the operator's own mailbox
+/// so passwordless login delivers a code they can actually read.
+fn apply_admin_overrides(spec: &mut spec::ScenarioSpec) {
+    let Some(user) = spec.users.get_mut("admin") else {
+        return;
+    };
+    if let Ok(email) = std::env::var("SEED_ADMIN_EMAIL")
+        && !email.trim().is_empty()
+    {
+        user.email = email.trim().to_string();
+    }
+    if let Ok(first_name) = std::env::var("SEED_ADMIN_FIRST_NAME")
+        && !first_name.trim().is_empty()
+    {
+        user.first_name = Some(first_name.trim().to_string());
+    }
+    if let Ok(last_name) = std::env::var("SEED_ADMIN_LAST_NAME")
+        && !last_name.trim().is_empty()
+    {
+        user.last_name = Some(last_name.trim().to_string());
+    }
 }
 
 #[tracing::instrument(skip(ctx), err)]
@@ -426,9 +519,27 @@ fn validate_scenario_database_url(database_url: &str) -> anyhow::Result<()> {
 
     ensure!(
         is_local_host && is_local_db,
-        "refusing to run scenario seeding against DATABASE_URL host={host:?} user={username:?} database={database:?}; expected the local docker database postgres://user:...@(localhost|127.0.0.1|postgres):<port>/macrodb"
+        "refusing to run scenario seeding against DATABASE_URL host={host:?} user={username:?} database={database:?}; expected the local docker database postgres://user:***@(localhost|127.0.0.1|postgres):<port>/macrodb"
     );
 
+    Ok(())
+}
+
+/// Gate for the self-host bootstrap. Unlike the local scenario commands it is
+/// not pinned to the local `user`/`macrodb` database, but it must still be an
+/// explicit opt-in and target a postgres database.
+#[allow(clippy::disallowed_methods, reason = "Only used when running the self-host bootstrap")]
+fn validate_bootstrap_environment(database_url: &str) -> anyhow::Result<()> {
+    ensure!(
+        std::env::var("SEED_BOOTSTRAP").as_deref() == Ok("true"),
+        "refusing to run the self-host bootstrap without SEED_BOOTSTRAP=true"
+    );
+    let parsed = url::Url::parse(database_url).context("DATABASE_URL must be a valid URL")?;
+    ensure!(
+        matches!(parsed.scheme(), "postgres" | "postgresql"),
+        "refusing to run the bootstrap against non-postgres DATABASE_URL scheme={}",
+        parsed.scheme()
+    );
     Ok(())
 }
 

@@ -1,0 +1,85 @@
+# One-shot seed/bootstrap service for the self-host Compose stack.
+#
+# On first boot it ensures the database is migrated (idempotent) and applies
+# the bundled bootstrap scenario (admin user + workspace + document + channel).
+# A sentinel file in the persistent `seed_state` volume makes later
+# `docker compose up` runs a no-op, so organic data is never reset.
+#
+# Usage (append to the self-host frontend stack):
+#   docker compose --project-directory . \
+#     -f compose.yml \
+#     -f docker/selfhost/compose.frontend.yml \
+#     -f docker/selfhost/compose.seed.yml up -d
+#
+# Re-run manually (e.g. after changing SEED_ADMIN_EMAIL):
+#   docker compose --project-directory . \
+#     -f compose.yml -f docker/selfhost/compose.frontend.yml \
+#     -f docker/selfhost/compose.seed.yml \
+#     run --rm seed sh -c 'rm -f /seed-state/.bootstrapped && /app/out/seed_cli scenario bootstrap'
+
+services:
+  seed:
+    image: macro-local-rust-services:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+      target: services_bundle
+    env_file:
+      - path: ${MACRO_ENV_FILE:-.env}
+        required: false
+    environment:
+      # Required gate for the `scenario bootstrap` command.
+      SEED_BOOTSTRAP: "true"
+      # The database the databases compose brought up (user/password/macrodb).
+      # Override with SEED_DATABASE_URL if Postgres is externalized.
+      DATABASE_URL: ${SEED_DATABASE_URL:-postgres://user:password@postgres:5432/macrodb}
+      # Markdown document content lives in sync/lexical. These differ from the
+      # OVERRIDE_SYNC_SERVICE_URL / OVERRIDE_LEXICAL_SERVICE_URL vars the Rust
+      # services consume — the seed CLI reads SYNC_SERVICE_URL / LEXICAL_SERVICE_URL.
+      SYNC_SERVICE_URL: ${SEED_SYNC_SERVICE_URL:-http://sync-service:8787}
+      LEXICAL_SERVICE_URL: ${SEED_LEXICAL_SERVICE_URL:-http://lexical-service:8096}
+      # The S3 client is built eagerly; local defaults keep the bootstrap from
+      # needing real AWS credentials even though the bootstrap uploads nothing.
+      LOCAL_AWS_URL: ${LOCAL_AWS_URL:-http://localstack:4566}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      # Optional: point the admin at the operator's own mailbox so passwordless
+      # login delivers a code they can read. Defaults to admin@seed.macro.local.
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_FIRST_NAME: ${SEED_ADMIN_FIRST_NAME:-}
+      SEED_ADMIN_LAST_NAME: ${SEED_ADMIN_LAST_NAME:-}
+    command:
+      - sh
+      - -ec
+      - |
+        set -eu
+        if [ -f /seed-state/.bootstrapped ]; then
+          echo "bootstrap already applied; skipping (remove the seed_state volume or /seed-state/.bootstrapped to re-run)"
+          exit 0
+        fi
+        /app/out/seed_cli scenario bootstrap
+        mkdir -p /seed-state
+        touch /seed-state/.bootstrapped
+        echo "bootstrap complete"
+    depends_on:
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      fusionauth:
+        condition: service_healthy
+      sync_service:
+        condition: service_healthy
+      lexical_service:
+        condition: service_healthy
+    networks:
+      - databases
+      - auth
+      - services
+    restart: "no"
+    volumes:
+      - seed_state:/seed-state
+
+volumes:
+  seed_state:
+    name: macro_seed_state

@@ -63,3 +63,28 @@ just seed-scenario --instance 2508 apply --file tooling/seed_cli/seed/scenarios/
   it) — so each link logs its persona straight in, one live session per tab
   against the same stack. For manual logins outside a dev build, the one-time
   codes land in mailpit (`just status_local` prints its UI address).
+
+## Self-host bootstrap
+
+For a fresh self-host deploy, `docker/selfhost/compose.seed.yml` runs a
+one-shot `scenario bootstrap` service that migrates the database (idempotent)
+and applies the bundled `seed/scenarios/bootstrap.json` scenario (admin user +
+team workspace + document + channel).
+
+```bash
+docker compose -f compose.yml \
+  -f docker/selfhost/compose.frontend.yml \
+  -f docker/selfhost/compose.seed.yml up -d
+```
+
+The command is gated by `SEED_BOOTSTRAP=true` and, unlike the local scenario
+commands, is not pinned to the `user`/`macrodb` local database. Optional env
+overrides for the bundled admin user:
+
+- `SEED_ADMIN_EMAIL` — default `admin@seed.macro.local`; set to the operator's
+  own mailbox so passwordless login delivers a readable code.
+- `SEED_ADMIN_FIRST_NAME`, `SEED_ADMIN_LAST_NAME` — display name.
+
+Pass `--file <scenario.json>` to apply a custom scenario instead of the
+bundled one.
+

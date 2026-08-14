@@ -43,9 +43,16 @@ pub async fn main() -> anyhow::Result<()> {
     cli.command.validate_environment(&env_vars)?;
     tracing::trace!("initializing");
 
-    let database_url = env_vars
-        .database_url
-        .replace("postgres:5432", "localhost:5432");
+    let database_url = if in_compose_bootstrap() {
+        // Inside the Compose network the service hostnames resolve directly;
+        // rewriting `postgres:5432` to `localhost:5432` would break the
+        // connection, so keep the URL as-is.
+        env_vars.database_url.as_ref().to_string()
+    } else {
+        env_vars
+            .database_url
+            .replace("postgres:5432", "localhost:5432")
+    };
     cli.command.pre_connect(&database_url).await?;
 
     let db = PgPoolOptions::new()
@@ -60,7 +67,11 @@ pub async fn main() -> anyhow::Result<()> {
         env_vars.fusionauth_api_key_secret_key.to_string(),
         env_vars.fusionauth_client_id.to_string(),
         env_vars.fusionauth_client_secret_key.to_string(),
-        transform_docker_url(&env_vars.fusionauth_base_url),
+        if in_compose_bootstrap() {
+            env_vars.fusionauth_base_url.as_ref().to_string()
+        } else {
+            transform_docker_url(&env_vars.fusionauth_base_url)
+        },
         "".to_string(), // NOTE: Not needed. Oauth redirect uri
         "".to_string(), // NOTE: Not needed. Google Client id
         "".to_string(), // NOTE: Not needed. Google client secret
@@ -78,6 +89,14 @@ pub async fn main() -> anyhow::Result<()> {
     };
 
     cli.command.execute(context).await
+}
+
+/// Whether the seed CLI is running as the one-shot self-host Compose
+/// bootstrap service (`SEED_BOOTSTRAP=true`). In that context the Compose
+/// service hostnames (`postgres`, `fusionauth`, …) resolve directly on the
+/// container network and must not be rewritten to `localhost`.
+fn in_compose_bootstrap() -> bool {
+    std::env::var("SEED_BOOTSTRAP").as_deref() == Ok("true")
 }
 
 /// Transforms the docker-network url to be localhost
