@@ -5,6 +5,9 @@
 #
 # Adds a Caddy reverse proxy that serves the built frontend SPA and routes
 # API calls to the correct backend services. Port 80 is the single entrypoint.
+#
+# `service_healthy` is used only for services that define a healthcheck in the
+# base compose. Worker services without a healthcheck use `service_started`.
 
 services:
   proxy:
@@ -39,20 +42,20 @@ services:
         condition: service_healthy
       sync_service:
         condition: service_healthy
-      websocket_service:
-        condition: service_healthy
       lexical_service:
-        condition: service_healthy
-      ai_editing_worker:
-        condition: service_healthy
-      analytics_proxy:
         condition: service_healthy
       mailpit:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      websocket_service:
+        condition: service_started
+      ai_editing_worker:
+        condition: service_started
+      analytics_proxy:
+        condition: service_started
     restart: unless-stopped
+
+  # Mailpit serves its UI under /mailpit so the proxy route (MP_WEBROOT) works.
+  # The base compose starts it without a webroot (plain /).
+  mailpit:
+    environment:
+      MP_WEBROOT: /mailpit
