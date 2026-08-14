@@ -40,7 +40,9 @@ ENV CI=true \
     MODE=development \
     NODE_ENV=production \
     NODE_OPTIONS=--max-old-space-size=6144 \
-    VITE_LOCAL_BACKEND_ORIGIN=same-origin
+    VITE_LOCAL_SERVERS=ALL \
+    VITE_LOCAL_BACKEND_ORIGIN=same-origin \
+    VITE_AI_EDITING_WORKER_URL=/ai-editing
 RUN bun run --bun build
 
 # ---- Stage 2: Caddy + static frontend ----

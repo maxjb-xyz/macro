@@ -50,9 +50,13 @@ services:
         condition: service_started
       ai_editing_worker:
         condition: service_started
-      analytics_proxy:
-        condition: service_started
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # Mailpit serves its UI under /mailpit so the proxy route (MP_WEBROOT) works.
   # The base compose starts it without a webroot (plain /).

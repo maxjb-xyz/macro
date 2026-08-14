@@ -11,6 +11,9 @@
 }
 
 :80 {
+    # Compose healthcheck probe (see docker/selfhost/compose.frontend.yml).
+    respond /healthz 200
+
     # ---- Rust service routes (from inventory path_prefix) ----
     handle_path /auth/* {
         reverse_proxy authentication-service:8080
