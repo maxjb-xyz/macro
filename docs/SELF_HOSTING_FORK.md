@@ -77,6 +77,91 @@ dependencies:
 just local-e2e --instance selfhost-e2e --port-base 32000
 ```
 
+## Self-Hosted Fork Plan
+
+### Phase 1: Prove the Disposable Stack
+
+The first goal is to prove that the upstream local stack can boot from this fork
+without privileged Macro team access.
+
+- Run the stack through `nix develop` and `just stack up --no-doppler`.
+- Confirm the Compose topology resolves and creates deterministic networks,
+  volumes, ports, and generated env files.
+- Seed `seed/scenarios/team-perms.json` and confirm passwordless login through
+  Mailpit.
+- Smoke test auth, documents, channels/messages, search, file upload/download,
+  WebSockets/collaboration, and background workers.
+- Record every failure as either an upstream local-stack bug, a self-hosting
+  gap, or an operator decision.
+
+This phase is complete when a fresh checkout can bring up a disposable stack and
+an operator can follow the runbook without guessing.
+
+### Phase 2: Define the Operator Contract
+
+After the disposable stack works, turn the local-equivalent path into an
+operator-owned Compose contract.
+
+- Add a self-host Compose overlay only where the upstream local stack is too
+  developer-oriented.
+- Add example env files for real secrets, domains, object storage, email,
+  FusionAuth, and integration credentials.
+- Decide how durable volumes, backups, restores, TLS, routing, CORS, cookies,
+  and WebSockets are owned.
+- Decide which services remain local containers and which may point at managed
+  equivalents such as S3-compatible storage or external SMTP.
+- Document the minimum host resources and expected failure modes.
+
+This phase is complete when the repo describes a long-lived deployment shape,
+not just a local development stack.
+
+### Phase 3: Add Reliable Verification
+
+The fork should not rely on manual inspection once upstream syncs begin.
+
+- Keep `just check` as the cheap changed-file quality gate.
+- Validate Compose config on every self-hosting change.
+- Add a headless stack smoke that boots, seeds, logs in, and probes core product
+  paths.
+- Capture status output and logs as artifacts when the smoke fails.
+- Add a release checklist for migrations, backups, rollback, and operator notes.
+
+This phase is complete when a sync PR can say exactly what was tested and what
+still needs manual review.
+
+### Phase 4: Automate Upstream Sync
+
+Once the manual sync process is boring, automate it.
+
+- Schedule a bot job to fetch `macro-inc/macro` and create a short-lived sync
+  branch.
+- Attempt the merge into this fork, run the cheap gates, and open a draft PR if
+  clean.
+- Use Codex to resolve ordinary conflicts while preserving upstream application
+  code and this fork's self-hosting layer.
+- Escalate auth, sessions, database migrations, secrets, billing, permissions,
+  queue/topic contracts, retention, and destructive data changes.
+- Include upstream commit range, fork-only files touched, validation results,
+  operator-facing changes, and known risks in every sync PR.
+
+This phase is complete when upstream updates arrive as reviewable PRs instead
+of untracked drift.
+
+### Phase 5: Keep the Fork Small
+
+Maintenance is mostly about resisting unnecessary divergence.
+
+- Audit fork-only patches regularly.
+- Upstream fixes that are generally useful.
+- Delete temporary shims when upstream grows a cleaner path.
+- Keep self-hosting code isolated in docs, Compose overlays, env defaults,
+  small adapters, and local orchestration.
+- Treat every new patch as an operator responsibility that needs validation and
+  upgrade notes.
+
+The fork is healthy when it is easy to explain how it differs from upstream and
+routine upstream updates do not require archaeology.
+
 ## Fork Patch Rules
 
 Prefer these locations for fork-only work:
