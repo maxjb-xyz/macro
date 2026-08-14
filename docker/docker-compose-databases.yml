@@ -134,6 +134,21 @@ services:
             --partitions "${KAFKA_TOPIC_PARTITIONS:-1}" \
             --replication-factor 1
         done
+
+        for topic in $topics; do
+          attempts=0
+          until /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --describe \
+            --topic "$topic" >/dev/null 2>&1; do
+            attempts=$((attempts + 1))
+            if [ "$attempts" -ge 30 ]; then
+              echo "Kafka topic was not visible after creation: $topic" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+        done
     networks:
       - databases
   search:

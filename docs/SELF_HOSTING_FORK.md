@@ -15,7 +15,7 @@ Upstream already ships a local Compose stack and optional developer runners:
 - `docker/docker-compose-databases.yml` runs Postgres, Redis, Kafka, and
   OpenSearch.
 - `infra/stacks/fusionauth-instance/docker-compose.yml` runs local FusionAuth.
-- `docker compose --project-directory . -f docker/docker-compose.yml up -d`
+- `docker compose up -d`
   starts the operator stack directly.
 - `just run_local --no-doppler` and `just stack up` remain upstream developer
   conveniences around the same local topology.
@@ -30,9 +30,9 @@ stack that can boot the full app and expose the missing production decisions.
 Use the upstream Compose stack as the first self-host smoke test:
 
 ```bash
-docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
-docker compose --project-directory . -f docker/docker-compose.yml up -d
-docker compose --project-directory . -f docker/docker-compose.yml ps
+docker compose config >/dev/null
+docker compose up -d
+docker compose ps
 ```
 
 Operators only need Docker with the Compose plugin for this Phase 1 path. Nix,
@@ -48,8 +48,8 @@ local placeholders and is safe to regenerate:
 
 ```bash
 cp .env.example .env
-docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
-docker compose --project-directory . -f docker/docker-compose.yml up -d
+docker compose config >/dev/null
+docker compose up -d
 ```
 
 The Compose project is fixed to `macro`, and its shared networks and data
@@ -73,7 +73,7 @@ an optional contributor shortcut for the same script.
 When finished:
 
 ```bash
-docker compose --project-directory . -f docker/docker-compose.yml down
+docker compose down
 ```
 
 This milestone is intentionally disposable. It proves the service graph, local
@@ -92,7 +92,8 @@ disposable path intentionally leaves open.
 Before changing the self-host path, run the cheap checks:
 
 ```bash
-docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
+docker compose config >/dev/null
+tooling/scripts/validate-compose-kafka-topics.py
 tooling/scripts/self-host-smoke.sh --skip-stack
 ```
 
@@ -130,7 +131,7 @@ The first goal is to prove that the upstream local stack can boot from this fork
 without privileged Macro team access.
 
 - Run the operator stack with
-  `docker compose --project-directory . -f docker/docker-compose.yml up -d`.
+  `docker compose up -d`.
 - Confirm the Compose topology resolves and creates deterministic networks,
   volumes, ports, and generated env files.
 - Seed `tooling/seed_cli/seed/scenarios/team-perms.json` and confirm
@@ -151,7 +152,7 @@ capture a clean working tree:
 ```bash
 git status --short --branch
 cp .env.example .env
-docker compose --project-directory . -f docker/docker-compose.yml up -d
+docker compose up -d
 tooling/scripts/self-host-smoke.sh
 ```
 
@@ -199,7 +200,7 @@ Write every issue to `failure-log.md` and classify it exactly as one of:
 When finished, reclaim the disposable stack:
 
 ```bash
-docker compose --project-directory . -f docker/docker-compose.yml down
+docker compose down
 ```
 
 ### Phase 2: Define the Operator Contract
@@ -335,7 +336,7 @@ git fetch upstream main
 git switch -c sync-upstream-$(date +%Y%m%d) origin/main
 git merge --no-ff upstream/main
 just check
-docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
+docker compose config >/dev/null
 ```
 
 If the merge is clean and checks pass, open a draft PR into `maxjb-xyz/macro`

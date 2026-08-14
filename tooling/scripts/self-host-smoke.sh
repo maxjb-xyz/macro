@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ARTIFACTS_DIR=""
 SKIP_STACK=false
 KEEP_STACK=true
-COMPOSE_FILE="docker/docker-compose.yml"
+COMPOSE_FILE="compose.yml"
 PROJECT_NAME="macro"
 ENV_FILE=".env"
 
