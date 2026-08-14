@@ -98,7 +98,7 @@ fi
 
 record compose-version "${COMPOSE[@]}" version
 record compose-config "${COMPOSE[@]}" config
-record compose-up "${COMPOSE[@]}" up -d --wait --wait-timeout 180
+record compose-up "${COMPOSE[@]}" up -d --build --wait --wait-timeout 180
 record compose-ps "${COMPOSE[@]}" ps
 record localstack-health "${COMPOSE[@]}" exec -T localstack curl -fsS http://localhost:4566/_localstack/health
 record localstack-sqs "${COMPOSE[@]}" exec -T localstack awslocal sqs list-queues
