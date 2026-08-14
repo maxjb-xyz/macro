@@ -47,8 +47,8 @@ services:
         condition: service_completed_successfully
       fusionauth:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     networks:
@@ -124,8 +124,8 @@ services:
     depends_on:
       postgres_bootstrap:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       document_storage_service:
         condition: service_started
       email_service:
@@ -180,8 +180,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       search:
         condition: service_healthy
       connection_gateway:
@@ -250,8 +250,8 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       localstack:
         condition: service_healthy
     networks:
@@ -280,8 +280,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       authentication-service:
         condition: service_started
       document_storage_service:
@@ -315,8 +315,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       document_cognition_service:
         condition: service_started
       authentication-service:
@@ -357,8 +357,8 @@ services:
         condition: service_started
       lexical_service:
         condition: service_started
-      kafka:
-        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
       search:
         condition: service_healthy
     networks:
