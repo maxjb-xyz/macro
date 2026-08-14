@@ -89,3 +89,10 @@ Use exactly one bucket per issue in `failure-log.md`:
 Include the failing `<name>.exit`, relevant `.err`, and the last useful section
 of `compose-logs.out` with each entry. An unavailable Docker daemon is an
 `environment` result; it is not evidence of an application failure.
+
+The default Compose stack keeps app services and local dependencies on Docker
+networks only. Do not add host port mappings to resolve a service-to-service
+failure; Macro services should use Compose hostnames such as
+`lexical-service:8096`, `localstack:4566`, `fusionauth:9011`, `postgres:5432`,
+and `kafka:29092`. Add host-published ports only in an explicit debug or public
+overlay.

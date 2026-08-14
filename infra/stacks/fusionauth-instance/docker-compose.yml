@@ -47,8 +47,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    ports:
-      - 9011:9011
+    expose:
+      - "9011"
     networks:
       - auth-internal
       - auth # exposes to other services
