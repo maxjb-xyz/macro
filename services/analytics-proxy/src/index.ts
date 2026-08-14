@@ -72,6 +72,11 @@ async function handleProxy(
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Compose healthcheck probe (see docker/docker-compose.yml analytics_proxy).
+// Registered before the rate-limiter middleware below so a liveness GET from
+// the container network is not gated on CF-Connecting-IP / rate-limit bindings.
+app.get('/health', (c) => c.text('ok'));
+
 // OTLP uses protobuf cross-origin. Cookies are stripped by handleProxy, so
 // wildcard origins and headers are safe and preflights need no credentials.
 app.use(

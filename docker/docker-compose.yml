@@ -227,6 +227,16 @@ services:
     networks:
       - databases
       - services
+    # Pure SQS consumer — no HTTP port. Liveness probe: the worker binary must
+    # still be running (dumb-init exits with it, so crash loops surface here).
+    # The bracket in the pattern is a self-mask so the probe's own shell argv
+    # (which contains the literal pattern) does not match itself.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'document_upload_finalizer_local_worke[r]' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ============================================================================
   # email_service (Port 8087)
@@ -297,6 +307,16 @@ services:
     networks:
       - databases
       - services
+    # Pure SQS consumer — no HTTP port. Liveness probe: the worker binary must
+    # still be running (dumb-init exits with it, so crash loops surface here).
+    # The bracket in the pattern is a self-mask so the probe's own shell argv
+    # (which contains the literal pattern) does not match itself.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'pubsub_worker[s]' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ============================================================================
   # notification_service (Port 8089)
@@ -414,6 +434,14 @@ services:
       services:
         aliases:
           - static-file-cdn
+    # nginx has no native healthcheck; use the dedicated /healthz location so
+    # readiness is independent of the LocalStack/S3 backend it fronts.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   # ============================================================================
   # localstack (Port 4566)
@@ -460,6 +488,15 @@ services:
       auth:
         aliases:
           - mailpit
+    # Mailpit ships a readyz subcommand that probes the running instance and
+    # auto-detects MP_WEBROOT (base compose runs at "/", the frontend overlay
+    # moves it to /mailpit), so this works under both.
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # ============================================================================
   # unfurl_service (Port 8095)
@@ -515,6 +552,12 @@ services:
       services:
         aliases:
           - websocket-service
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:6969/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================================================
   # sync_service (Port 8787)
@@ -572,6 +615,12 @@ services:
       services:
         aliases:
           - ai-editing-worker
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8933/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   # ============================================================================
   # analytics_proxy (Port 8098)
@@ -594,6 +643,12 @@ services:
       services:
         aliases:
           - analytics-proxy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8098/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ============================================================================
   # lexical_service (Port 8096)

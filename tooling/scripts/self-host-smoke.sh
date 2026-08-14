@@ -129,6 +129,17 @@ fi
 run_capture compose-up "${COMPOSE[@]}" up -d --wait --wait-timeout 120
 run_capture compose-ps "${COMPOSE[@]}" ps
 
+# Health guard: `up --wait` returns once every healthchecked service reports
+# healthy, but a service can flip unhealthy right after (post-startup crash
+# loop). Re-check explicitly and fail the smoke instead of accepting a stack
+# that is already degrading. The filter output is header-only when healthy.
+run_capture compose-ps-unhealthy "${COMPOSE[@]}" ps --filter "health=unhealthy" --format 'table {{.Name}}\t{{.Health}}\t{{.Status}}'
+if grep -qE 'unhealthy' "$ARTIFACTS_DIR/compose-ps-unhealthy.out"; then
+  echo "unhealthy services detected after boot; see $ARTIFACTS_DIR/compose-ps-unhealthy.out" \
+    | tee -a "$ARTIFACTS_DIR/blockers.txt" >&2
+  exit 1
+fi
+
 {
   echo "compose_project=$PROJECT_NAME"
   echo "network=databases"
