@@ -102,6 +102,12 @@ For changes that affect boot or environment wiring, run a full disposable stack:
 tooling/scripts/self-host-smoke.sh --down
 ```
 
+When the repository is ready for one-time Docker-daemon validation, use the
+reviewable host-test handoff in
+[`HOST_TEST_HANDOFF.md`](HOST_TEST_HANDOFF.md). It captures the exact Compose
+commands, exit codes, logs, and failure buckets without making a Docker daemon
+an operator or contributor prerequisite.
+
 Contributors can also run the upstream developer gates when Nix/Rust/Cargo/Just
 are installed:
 
