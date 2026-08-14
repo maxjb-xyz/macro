@@ -95,8 +95,13 @@ fi
 
 record compose-version "${COMPOSE[@]}" version
 record compose-config "${COMPOSE[@]}" config
-record compose-up "${COMPOSE[@]}" up -d
+record compose-up "${COMPOSE[@]}" up -d --wait --wait-timeout 180
 record compose-ps "${COMPOSE[@]}" ps
+record localstack-health "${COMPOSE[@]}" exec -T localstack curl -fsS http://localhost:4566/_localstack/health
+record localstack-sqs "${COMPOSE[@]}" exec -T localstack awslocal sqs list-queues
+record localstack-s3 "${COMPOSE[@]}" exec -T localstack awslocal s3api list-buckets
+record localstack-dynamodb "${COMPOSE[@]}" exec -T localstack awslocal dynamodb list-tables
+record mailpit-health "${COMPOSE[@]}" exec -T localstack curl -fsS http://mailpit:8025/api/v1/info
 record compose-logs "${COMPOSE[@]}" logs --no-color --tail 200
 
 cat >"$ARTIFACTS_DIR/failure-log.md" <<'EOF'

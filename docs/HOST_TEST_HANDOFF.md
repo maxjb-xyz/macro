@@ -31,13 +31,17 @@ complete these checks in order:
    resolved Compose model.
 3. Confirm `compose-up.exit` is `0`.
 4. Review `compose-ps.out`; containers needed by the stack should be running.
-5. Review `compose-logs.out` for startup errors or crash loops.
-6. If `--keep-stack` was used, run the browser checks from
+5. Confirm `localstack-health.exit`, `localstack-sqs.exit`,
+   `localstack-s3.exit`, `localstack-dynamodb.exit`, and
+   `mailpit-health.exit` are `0`; these prove the local integration substrates
+   exist before browser testing.
+6. Review `compose-logs.out` for startup errors or crash loops.
+7. If `--keep-stack` was used, run the browser checks from
    `docs/SELF_HOSTING_FORK.md` and record results in `failure-log.md`.
-7. Review `docs/SELF_HOSTING_INTEGRATIONS.md` and classify any integration
+8. Review `docs/SELF_HOSTING_INTEGRATIONS.md` and classify any integration
    failure as local infrastructure, local emulation, missing external
    credentials, or an intentionally stubbed provider.
-8. Confirm the stack was reclaimed (`compose-down.exit` is `0`) unless the
+9. Confirm the stack was reclaimed (`compose-down.exit` is `0`) unless the
    artifact records an intentional `--keep-stack` handoff.
 
 ## Artifact format
@@ -54,6 +58,11 @@ compose-version.{cmd,out,err,exit}
 compose-config.{cmd,out,err,exit}
 compose-up.{cmd,out,err,exit}
 compose-ps.{cmd,out,err,exit}
+localstack-health.{cmd,out,err,exit}
+localstack-sqs.{cmd,out,err,exit}
+localstack-s3.{cmd,out,err,exit}
+localstack-dynamodb.{cmd,out,err,exit}
+mailpit-health.{cmd,out,err,exit}
 compose-logs.{cmd,out,err,exit}
 compose-down.{cmd,out,err,exit}
 failure-log.md
