@@ -1,0 +1,36 @@
+# Example overlay for trying immutable Rust service images in self-host mode.
+#
+# Apply after the upstream/local compose file and lifecycle overlay:
+#   docker compose --project-directory . \
+#     -f compose.yml \
+#     -f docker/docker-compose.self-host.yml \
+#     -f docker/selfhost/compose.release-images.example.yml \
+#     --env-file .env.example config authentication-service static_file_service
+#
+# This deliberately overrides only two low-risk services as the first prototype.
+# Extend service-by-service after each image has a CI-published tag and a smoke
+# check. The base compose topology, env_file, depends_on, healthcheck, and
+# networks remain inherited.
+
+services:
+  authentication-service:
+    # Built with:
+    #   docker build \
+    #     -f docker/Dockerfile \
+    #     --build-arg SERVICE_NAME=authentication_service \
+    #     -t ${MACRO_RELEASE_IMAGE_REGISTRY:-macro-release}/authentication-service:${MACRO_RELEASE_IMAGE_TAG:-dev} \
+    #     .
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY:-macro-release}/authentication-service:${MACRO_RELEASE_IMAGE_TAG:-dev}
+    build: !reset null
+    command: !reset null
+
+  static_file_service:
+    # Built with:
+    #   docker build \
+    #     -f docker/Dockerfile \
+    #     --build-arg SERVICE_NAME=static_file_service \
+    #     -t ${MACRO_RELEASE_IMAGE_REGISTRY:-macro-release}/static-file-service:${MACRO_RELEASE_IMAGE_TAG:-dev} \
+    #     .
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY:-macro-release}/static-file-service:${MACRO_RELEASE_IMAGE_TAG:-dev}
+    build: !reset null
+    command: !reset null

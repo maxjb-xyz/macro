@@ -89,25 +89,38 @@ must configure or explicitly disable each one at the product-policy level.
 
 ## Backup and restore hooks
 
+The production hardening gate checklist lives in
+[`selfhost/production-hardening-checklist.md`](selfhost/production-hardening-checklist.md).
+It maps TLS/reverse proxy, restart policies, resource limits, health checks, log
+retention, auth/public URL correctness, disabled integrations, and
+update/rollback requirements to the Compose/env/proxy changes that must exist
+before exposing real users.
+
+The detailed persistence inventory, backup/restore order, and upgrade safety
+rules live in
+[`selfhost/persistence-backup-restore.md`](selfhost/persistence-backup-restore.md).
+The first operator script skeleton is
+`tooling/selfhost/backup-restore.sh`.
+
+The boot/restart acceptance smoke for operators lives in
+[`selfhost/smoke-test-spec.md`](selfhost/smoke-test-spec.md). Run it after
+initial boot, restart, backup/restore, update, and rollback drills to prove
+login, document/task/channel behavior, search, file storage, workers, and
+persistence before exposing users again.
+
 The repository intentionally provides hooks, not a provider-specific backup
-implementation. Wire these commands into the host's backup scheduler and
-replace the placeholders with the chosen encrypted destination:
+implementation. Wire those commands into the host's backup scheduler and
+replace local artifact storage with the chosen encrypted destination:
 
 ```bash
-# TODO(operator): dump both databases to an encrypted, off-host destination.
-docker compose -f compose.yml -f docker/docker-compose.self-host.yml \
-  exec -T postgres pg_dumpall -U user > /BACKUP_DEST/macro-postgres.sql
-docker compose -f compose.yml -f docker/docker-compose.self-host.yml \
-  exec -T db pg_dumpall -U postgres > /BACKUP_DEST/fusionauth.sql
+tooling/selfhost/backup-restore.sh inventory
+tooling/selfhost/backup-restore.sh backup --backup-dir /BACKUP_DEST/macro-$(date -u +%Y%m%dT%H%M%SZ)
 
-# TODO(operator): snapshot/copy the named volumes, or use a volume-aware tool.
-docker run --rm -v macro_postgres_data:/source:ro -v /BACKUP_DEST:/backup \
-  alpine tar czf /backup/macro-postgres-volume.tgz -C /source .
-
-# TODO(operator): restore only during a planned outage, after validating the
-# destination and stopping services that write the target volume.
-docker run --rm -v macro_postgres_data:/target -v /BACKUP_DEST:/backup \
-  alpine tar xzf /backup/macro-postgres-volume.tgz -C /target
+# Restore is destructive and must only run during a planned outage, after
+# validating the backup directory and testing on a separate host.
+tooling/selfhost/backup-restore.sh restore \
+  --backup-dir /BACKUP_DEST/macro-YYYYMMDDTHHMMSSZ \
+  --i-understand-data-loss
 ```
 
 Restore drills must include Postgres, FusionAuth, object storage, and the
