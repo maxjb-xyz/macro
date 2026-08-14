@@ -108,6 +108,7 @@ services:
 
 networks:
   databases:
+    driver: bridge
     name: databases
 volumes:
   db:

@@ -43,6 +43,20 @@ The app is served from the Compose-published proxy/frontend ports. Passwordless
 login emails are captured by Mailpit; use the Mailpit container's published URL
 instead of expecting real email delivery.
 
+For a fresh checkout, create the disposable env file first. It contains only
+local placeholders and is safe to regenerate:
+
+```bash
+cp .env.example .env
+docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
+docker compose --project-directory . -f docker/docker-compose.yml up -d
+```
+
+The Compose project is fixed to `macro`, and its shared networks and data
+volumes have explicit names so recreating the stack from another checkout does
+not create a second set of resources. The names are intentionally single-host
+and disposable; do not use this file as a production secrets template.
+
 For a repeatable Phase 1 evidence capture, use the smoke wrapper:
 
 ```bash
@@ -119,10 +133,13 @@ an operator can follow the runbook without guessing.
 
 #### Phase 1 Operator Runbook
 
-Start from a fresh checkout on `main` and capture a clean working tree:
+Start from a fresh checkout on `main`, create `.env` from the example, and
+capture a clean working tree:
 
 ```bash
 git status --short --branch
+cp .env.example .env
+docker compose --project-directory . -f docker/docker-compose.yml up -d
 tooling/scripts/self-host-smoke.sh
 ```
 
