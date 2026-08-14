@@ -203,6 +203,10 @@ Deeper reading: [key concepts](https://docs.macro.com/concepts/blocks) covers bl
 
 To run the full app on your machine, follow [Running locally](docs/RUNNING_LOCALLY.md).
 
+This fork is also maintaining a Docker Compose-first self-hosting path; see
+[Self-hosted fork maintenance](docs/SELF_HOSTING_FORK.md) for the fork strategy,
+current disposable-stack milestone, sync process, and known production gaps.
+
 To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 <br />
