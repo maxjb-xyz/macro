@@ -10,13 +10,21 @@ infrastructure) on one Docker host behind a single Caddy reverse proxy.
 - Outbound internet for image pulls / builds.
 - (Optional) a public domain + TLS — see `docs/selfhost/production-hardening-checklist.md`.
 
-## 1. Get the code
+## 1. Get the code + generate secrets
 
 ```bash
 git clone https://github.com/maxjb-xyz/macro.git
 cd macro
-cp .env.example .env
+./tooling/selfhost/generate-secrets.sh
 ```
+
+This writes a real `.env` with freshly generated random secrets (FusionAuth API
+key, client secret, JWT signing key, admin password, internal service auth
+keys, and the RS256 API-token keypair). It refuses to overwrite an existing
+`.env`, and `.env` is gitignored so it is never committed.
+
+The bundled `.env.example` holds placeholder values only for reference — do not
+deploy from it directly.
 
 ## 2. Boot the stack
 

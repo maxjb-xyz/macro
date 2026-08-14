@@ -2,8 +2,8 @@
   "//": "GENERATED for self-host. Deterministic local FusionAuth bootstrap. Do not edit.",
   "apiKeys": [
     {
-      "key": "bf69486b-4733-4954-a44e-2e1b5f2c8a91",
-      "description": "Local Development API Key"
+      "key": "#{ENV.FUSIONAUTH_API_KEY}",
+      "description": "Self-host API Key"
     }
   ],
   "variables": {
@@ -18,7 +18,7 @@
           "id": "d7d09513-a3f5-401c-9685-34ab6c552453",
           "algorithm": "HS256",
           "name": "Local JWT Signing Key",
-          "secret": "super-secret-jwt-signing-key-for-local-development-only",
+          "secret": "#{ENV.JWT_SECRET_KEY}",
           "type": "HMAC"
         }
       }
@@ -114,7 +114,7 @@
           },
           "oauthConfiguration": {
             "clientId": "22222222-2222-4222-8222-222222222222",
-            "clientSecret": "c3VwZXItc2VjcmV0LWxvY2FsLWNsaWVudC1zZWNyZXQtMDE",
+            "clientSecret": "#{ENV.FUSIONAUTH_CLIENT_SECRET_KEY}",
             "enabledGrants": [
               "authorization_code",
               "refresh_token"
@@ -154,7 +154,7 @@
       "body": {
         "user": {
           "email": "admin@macro.com",
-          "password": "macroIsGreat!"
+          "password": "#{ENV.FUSIONAUTH_ADMIN_PASSWORD}"
         },
         "registration": {
           "applicationId": "3c219e58-ed0e-4b18-ad48-f4f92793ae32",
@@ -180,7 +180,7 @@
             "user.email.verified": true
           },
           "headers": {
-            "x-internal-auth-key": "local"
+            "x-internal-auth-key": "#{ENV.INTERNAL_API_KEY}"
           }
         }
       }
@@ -199,7 +199,7 @@
             "user.delete.complete": true
           },
           "headers": {
-            "x-internal-auth-key": "local"
+            "x-internal-auth-key": "#{ENV.INTERNAL_API_KEY}"
           }
         }
       }
