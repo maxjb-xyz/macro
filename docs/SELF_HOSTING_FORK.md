@@ -212,6 +212,11 @@ operator-owned Compose contract.
   are documented in `SELF_HOSTING_DURABLE.md`.
 - Add example env files for real secrets, domains, object storage, email,
   FusionAuth, and integration credentials.
+- Maintain the integration support matrix in
+  [`SELF_HOSTING_INTEGRATIONS.md`](SELF_HOSTING_INTEGRATIONS.md) so Gmail,
+  GitHub, Stripe, object storage, webhooks, workers, search, and other essential
+  integrations are visible as local, local-emulated, external-required, or
+  stubbed.
 - Decide how durable volumes, backups, restores, TLS, routing, CORS, cookies,
   and WebSockets are owned.
 - Decide which services remain local containers and which may point at managed

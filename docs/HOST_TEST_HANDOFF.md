@@ -34,7 +34,10 @@ complete these checks in order:
 5. Review `compose-logs.out` for startup errors or crash loops.
 6. If `--keep-stack` was used, run the browser checks from
    `docs/SELF_HOSTING_FORK.md` and record results in `failure-log.md`.
-7. Confirm the stack was reclaimed (`compose-down.exit` is `0`) unless the
+7. Review `docs/SELF_HOSTING_INTEGRATIONS.md` and classify any integration
+   failure as local infrastructure, local emulation, missing external
+   credentials, or an intentionally stubbed provider.
+8. Confirm the stack was reclaimed (`compose-down.exit` is `0`) unless the
    artifact records an intentional `--keep-stack` handoff.
 
 ## Artifact format

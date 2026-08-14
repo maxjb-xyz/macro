@@ -24,6 +24,12 @@ The overlay adds `restart: unless-stopped` and graceful stop windows to the
 existing Postgres, Redis, Kafka, OpenSearch, and FusionAuth containers. It does
 not use `down -v`; removing volumes is an intentional data-destruction event.
 
+Before enabling real users, review the integration contract in
+[`SELF_HOSTING_INTEGRATIONS.md`](SELF_HOSTING_INTEGRATIONS.md). The Compose
+stack preserves Macro's integration surface, but several features require
+operator-owned external credentials, provider approvals, public HTTPS callback
+URLs, and webhook routing before they are functional.
+
 ## Durable data
 
 The base Compose files already use explicit single-host volumes:
@@ -74,6 +80,11 @@ Mailpit is for local smoke tests only. Configure a real SMTP relay, sender
 domain, SPF/DKIM/DMARC, and bounce handling before enabling passwordless login
 for users. Replace all `local` auth keys and FusionAuth API/client secrets;
 rotate them as operator-managed secrets rather than committing them to `.env`.
+
+Google/Gmail, GitHub, Stripe, LiveKit, model providers, push notifications, and
+calendar/webhook integrations are not optional product surfaces. Their local
+stub values only satisfy boot-time config. A production self-host deployment
+must configure or explicitly disable each one at the product-policy level.
 
 ## Backup and restore hooks
 
