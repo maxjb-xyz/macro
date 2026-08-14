@@ -2,26 +2,26 @@
 # with immutable per-service release images from a registry.
 #
 # Prerequisites:
-#   1. Build and push images:
+#   1. Build and push images (CI does this automatically on push to main; or
+#      manually):
 #        tooling/selfhost/build-release-images.sh \
 #          --registry ghcr.io/my-org --tag v2026.4.28.0 --push
 #   2. Set in your operator .env:
-#        MACRO_RELEASE_IMAGE_REGISTRY=ghcr.io/my-org
-#        MACRO_RELEASE_IMAGE_TAG=v2026.4.28.0
+#        MACRO_RELEASE_IMAGE_REGISTRY=ghcr.io/maxjb-xyz/macro
+#        MACRO_RELEASE_IMAGE_TAG=sha-<short>   # or v2026.4.28.0
 #
 # Usage:
 #   docker compose --project-directory . \
 #     -f compose.yml \
-#     -f docker/docker-compose.self-host.yml \
+#     -f docker/selfhost/compose.frontend.yml \
 #     -f docker/selfhost/compose.published.yml \
 #     --env-file .env up -d
 #
-# This overlay overrides every Rust HTTP service and worker that shares the
-# production-shaped docker/Dockerfile. Special-case services
-# (search_processing_service, convert_service) and the JS/worker services
-# (sync_service, lexical_service, ai_editing_worker, analytics_proxy,
-# websocket_service) are NOT covered yet; keep them on their existing
-# Dockerfiles until dedicated release images are published.
+# This overlay overrides every Rust HTTP service, worker, and the frontend
+# proxy. The JS/worker services (sync_service, lexical_service,
+# ai_editing_worker, analytics_proxy, websocket_service) are NOT covered yet;
+# they keep their existing (wrangler-dev) Dockerfiles until dedicated release
+# images are published.
 
 services:
   authentication-service:
@@ -73,3 +73,22 @@ services:
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/static-file-service:${MACRO_RELEASE_IMAGE_TAG}
     build: !reset null
     command: !reset null
+
+  unfurl_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/unfurl-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  image_proxy_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/image-proxy-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  search_processing_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/search-processing-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  proxy:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/proxy:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null

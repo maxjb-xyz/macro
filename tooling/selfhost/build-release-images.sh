@@ -20,15 +20,17 @@ VERBOSE=false
 # (e.g. contacts-service) while Compose service names use snake_case.
 RUST_SERVICES=(
   authentication-service:authentication_service
-  connection-gateway:connection_gateway
+  connection-gateway:connection_gateway_service
   contacts-service:contacts_service
   document-cognition-service:document_cognition_service
   document-storage-service:document_storage_service
-  document-upload-finalizer:document_upload_finalizer
+  document-upload-finalizer:document_upload_finalizer_local_worker
   email-service:email_service
-  email-pubsub-workers:email_pubsub_workers
+  email-pubsub-workers:pubsub_workers
   notification-service:notification_service
   static-file-service:static_file_service
+  unfurl-service:unfurl_service
+  image-proxy-service:image_proxy_service
 )
 
 # --- Services that need their own Dockerfile --------------------------------

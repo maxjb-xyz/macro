@@ -1,0 +1,143 @@
+name: build-release-images
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Rust services — docker/Dockerfile builds one binary per image via
+          # the SERVICE_NAME build arg.
+          - image: authentication-service
+            bin: authentication_service
+            file: docker/Dockerfile
+          - image: connection-gateway
+            bin: connection_gateway_service
+            file: docker/Dockerfile
+          - image: contacts-service
+            bin: contacts_service
+            file: docker/Dockerfile
+          - image: document-cognition-service
+            bin: document_cognition_service
+            file: docker/Dockerfile
+          - image: document-storage-service
+            bin: document_storage_service
+            file: docker/Dockerfile
+          - image: document-upload-finalizer
+            bin: document_upload_finalizer_local_worker
+            file: docker/Dockerfile
+          - image: email-service
+            bin: email_service
+            file: docker/Dockerfile
+          - image: email-pubsub-workers
+            bin: pubsub_workers
+            file: docker/Dockerfile
+          - image: notification-service
+            bin: notification_service
+            file: docker/Dockerfile
+          - image: static-file-service
+            bin: static_file_service
+            file: docker/Dockerfile
+          - image: unfurl-service
+            bin: unfurl_service
+            file: docker/Dockerfile
+          - image: image-proxy-service
+            bin: image_proxy_service
+            file: docker/Dockerfile
+          # search_processing_service needs pdfium (own Dockerfile; no SERVICE_NAME).
+          - image: search-processing-service
+            bin: search_processing_service
+            file: docker/Dockerfile.search_processing_service
+          # Frontend + Caddy reverse proxy.
+          - image: proxy
+            bin: proxy
+            file: docker/selfhost/Dockerfile.proxy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          build-args: |
+            SERVICE_NAME=${{ matrix.bin }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:latest
+          # NOTE: the Rust Dockerfile's --mount target cache does not persist
+          # across CI runs; only the image layer cache does. These are slow
+          # first builds (~15-30 min per service). Switching the generic
+          # docker/Dockerfile to cargo-chef (as Dockerfile.search_processing_service
+          # already does) is the follow-up to cut rebuild cost.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Tag versioned images only (no :latest) when a v* tag is pushed.
+  version-tag:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - authentication-service
+          - connection-gateway
+          - contacts-service
+          - document-cognition-service
+          - document-storage-service
+          - document-upload-finalizer
+          - email-service
+          - email-pubsub-workers
+          - notification-service
+          - static-file-service
+          - unfurl-service
+          - image-proxy-service
+          - search-processing-service
+          - proxy
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag the already-pushed :sha-<sha> image with the git tag, so version
+      # tags never rebuild.
+      - name: Add version tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          SHA_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:sha-${{ github.sha }}"
+          VER_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:${TAG}"
+          docker pull "$SHA_IMAGE"
+          docker tag "$SHA_IMAGE" "$VER_IMAGE"
+          docker push "$VER_IMAGE"
