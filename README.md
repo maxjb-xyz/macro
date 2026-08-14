@@ -207,6 +207,9 @@ This fork is also maintaining a Docker Compose-first self-hosting path; see
 [Self-hosted fork maintenance](docs/SELF_HOSTING_FORK.md) for the fork strategy,
 current disposable-stack milestone, sync process, and known production gaps.
 
+For a one-command single-host deploy, see the
+[MVP quick start](docs/selfhost/MVP-QUICKSTART.md).
+
 To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 <br />
