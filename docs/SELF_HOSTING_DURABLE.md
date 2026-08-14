@@ -13,10 +13,10 @@ secret and integration placeholder before exposing the host:
 ```bash
 cp .env.example .env
 docker compose --project-directory . \
-  -f docker/docker-compose.yml \
+  -f compose.yml \
   -f docker/docker-compose.self-host.yml config >/dev/null
 docker compose --project-directory . \
-  -f docker/docker-compose.yml \
+  -f compose.yml \
   -f docker/docker-compose.self-host.yml up -d
 ```
 
@@ -95,9 +95,9 @@ replace the placeholders with the chosen encrypted destination:
 
 ```bash
 # TODO(operator): dump both databases to an encrypted, off-host destination.
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.self-host.yml \
+docker compose -f compose.yml -f docker/docker-compose.self-host.yml \
   exec -T postgres pg_dumpall -U user > /BACKUP_DEST/macro-postgres.sql
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.self-host.yml \
+docker compose -f compose.yml -f docker/docker-compose.self-host.yml \
   exec -T db pg_dumpall -U postgres > /BACKUP_DEST/fusionauth.sql
 
 # TODO(operator): snapshot/copy the named volumes, or use a volume-aware tool.

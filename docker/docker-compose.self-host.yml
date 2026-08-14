@@ -2,7 +2,7 @@
 #
 # Usage:
 #   docker compose --project-directory . \
-#     -f docker/docker-compose.yml \
+#     -f compose.yml \
 #     -f docker/docker-compose.self-host.yml up -d
 #
 # The base file owns the named data volumes. This file only changes container
