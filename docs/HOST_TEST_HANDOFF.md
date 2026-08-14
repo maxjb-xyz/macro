@@ -13,7 +13,8 @@ tooling/scripts/host-test-handoff.sh
 ```
 
 The script uses `.env.example`, starts the existing `docker/docker-compose.yml`
-with project name `macro`, captures evidence, and removes the stack on exit.
+with project name `macro`, rebuilds local images so merged Dockerfile changes
+are tested, captures evidence, and removes the stack on exit.
 To use an operator-managed env file or leave the stack running for browser
 checks:
 
