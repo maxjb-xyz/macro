@@ -64,7 +64,7 @@ tooling/scripts/self-host-smoke.sh
 ```
 
 The wrapper runs the cheap Compose checks, starts the stack with
-`docker compose up -d`, captures status/log/resource artifacts under
+`docker compose up -d --wait`, captures status/log/resource artifacts under
 `artifacts/self-host-smoke/`, and leaves the stack running for browser checks.
 Use `tooling/scripts/self-host-smoke.sh --down` when you only need machine
 artifacts and want the stack reclaimed automatically. `just self-host-smoke` is
@@ -81,6 +81,12 @@ AWS equivalents, auth, seed data, and browser entrypoint. It does not promise
 durable data, external integrations, backups, TLS, real object storage, or
 production-grade secrets.
 
+For the smallest long-lived Docker-host contract built on this topology, see
+[`SELF_HOSTING_DURABLE.md`](SELF_HOSTING_DURABLE.md). It is an operator overlay,
+not a second application stack: it preserves the upstream services and adds
+restart behavior plus the decisions and backup/restore hooks that the
+disposable path intentionally leaves open.
+
 ## Validation Path
 
 Before changing the self-host path, run the cheap checks:
@@ -95,6 +101,12 @@ For changes that affect boot or environment wiring, run a full disposable stack:
 ```bash
 tooling/scripts/self-host-smoke.sh --down
 ```
+
+When the repository is ready for one-time Docker-daemon validation, use the
+reviewable host-test handoff in
+[`HOST_TEST_HANDOFF.md`](HOST_TEST_HANDOFF.md). It captures the exact Compose
+commands, exit codes, logs, and failure buckets without making a Docker daemon
+an operator or contributor prerequisite.
 
 Contributors can also run the upstream developer gates when Nix/Rust/Cargo/Just
 are installed:
@@ -148,16 +160,13 @@ The smoke wrapper writes one file per command under
 validation notes for the PR or sync:
 
 - `compose-config.out` proves the base Compose topology resolves.
-- `compose-up.out` records the direct `docker compose up -d` operator startup.
+- `compose-up.out` records the direct `docker compose up -d --wait` operator startup.
 - `compose-ps.out` records container state.
 - `resource-names.txt`, `docker-network-inspect.out`, and
   `docker-volume-inspect.out` record the deterministic Compose project,
   networks, and volumes.
 - `docker-ps.out` and `docker-logs.out` capture runtime evidence for follow-up
   debugging.
-- When `just` and `cargo` are installed, optional `validate-local-compose.out`,
-  `validate-local-env.out`, `seed-apply.out`, `seed-status.out`, and
-  `seed-matrix.out` artifacts may be present as contributor evidence.
 
 After `tooling/scripts/self-host-smoke.sh` succeeds, use the published Compose
 ports to complete the browser checks in `manual-smoke-checklist.md`:
@@ -198,8 +207,9 @@ docker compose --project-directory . -f docker/docker-compose.yml down
 After the disposable stack works, turn the local-equivalent path into an
 operator-owned Compose contract.
 
-- Add a self-host Compose overlay only where the upstream local stack is too
-  developer-oriented.
+- Extend `docker/docker-compose.self-host.yml` only where the upstream local
+  stack is too developer-oriented; the initial lifecycle overlay and contract
+  are documented in `SELF_HOSTING_DURABLE.md`.
 - Add example env files for real secrets, domains, object storage, email,
   FusionAuth, and integration credentials.
 - Decide how durable volumes, backups, restores, TLS, routing, CORS, cookies,

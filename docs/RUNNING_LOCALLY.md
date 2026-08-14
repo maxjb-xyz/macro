@@ -14,6 +14,12 @@ docker compose --project-directory . -f docker/docker-compose.yml up -d
 docker compose --project-directory . -f docker/docker-compose.yml ps
 ```
 
+Add `--wait` to wait for declared health checks before returning:
+
+```bash
+docker compose --project-directory . -f docker/docker-compose.yml up -d --wait
+```
+
 Use `tooling/scripts/self-host-smoke.sh --down` for the scripted evidence
 capture, or reclaim a manually started stack with:
 

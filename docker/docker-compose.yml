@@ -43,9 +43,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - fusionauth
-      - redis
+      postgres:
+        condition: service_healthy
+      fusionauth:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - auth
       - databases
@@ -67,7 +70,8 @@ services:
     ports:
       - "8082:8080"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       databases:
       services:
