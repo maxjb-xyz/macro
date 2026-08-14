@@ -1,43 +1,29 @@
 # Self-host frontend + reverse proxy image.
 #
-# Three stages:
-#   1. wasm-builder  — build crates/client/cache-wasm (gitignored, required by
-#                      the GraphQL cache worker; without it the cache degrades
-#                      to network-only at runtime).
-#   2. frontend-builder — bun + vite build of apps/web with
-#                      VITE_LOCAL_BACKEND_ORIGIN=same-origin (proxy origin).
-#   3. caddy         — serve the dist bundle under /app and reverse-proxy API
-#                      paths via docker/selfhost/Caddyfile.
+# Two stages:
+#   1. frontend-builder — bun + vite build of apps/web with
+#      VITE_LOCAL_BACKEND_ORIGIN=same-origin (the proxy origin).
+#   2. caddy           — serve the dist bundle under /app and reverse-proxy API
+#                        paths via docker/selfhost/Caddyfile.
+#
+# NOTE: the GraphQL cache WASM package (crates/client/cache-wasm) is NOT built
+# here. It is loaded dynamically at runtime (`@vite-ignore`), so the frontend
+# builds without it and the normalized cache degrades to network-only — an
+# acceptable MVP tradeoff. Operators who want the full cache should build it
+# with `just build-cache-wasm` before the image build and place it at
+# apps/web/src/lib/graphql-cache/wasm/.
 #
 # Build context must be the repository root.
 
-# ---- Stage 1: Rust wasm cache ----
-FROM rust:1.94-bookworm AS wasm-builder
-WORKDIR /app
-RUN curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
-COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
-COPY crates/client/cache-wasm crates/client/cache-wasm
-COPY crates crates
-# Build the cache wasm into the frontend's gitignored wasm dir.
-RUN mkdir -p apps/web/src/lib/graphql-cache/wasm && \
-    cd crates/client/cache-wasm && \
-    wasm-pack build --target web --release --out-dir ../../../apps/web/src/lib/graphql-cache/wasm
-
-# ---- Stage 2: frontend build ----
+# ---- Stage 1: frontend build ----
 FROM oven/bun:1 AS frontend-builder
 WORKDIR /app
-# Install the Rust toolchain bits bun needs is unnecessary here; copy the built
-# wasm from stage 1 and the source tree.
-COPY --from=wasm-builder /app/apps/web/src/lib/graphql-cache/wasm /app/apps/web/src/lib/graphql-cache/wasm
 COPY package.json bun.lock ./
 COPY apps/web/package.json apps/web/
 COPY packages/ packages/
 COPY static_assets/ static_assets/
 RUN cd apps/web && bun install --frozen-lockfile
 COPY apps/web/ apps/web/
-COPY crates/client/cache-core crates/client/cache-core
-COPY crates/client/cache-idb crates/client/cache-idb
-COPY crates/client/cache-wasm crates/client/cache-wasm
 WORKDIR /app/apps/web
 ENV CI=true \
     MODE=development \
@@ -46,7 +32,7 @@ ENV CI=true \
     VITE_LOCAL_BACKEND_ORIGIN=same-origin
 RUN bun run --bun build
 
-# ---- Stage 3: Caddy + static frontend ----
+# ---- Stage 2: Caddy + static frontend ----
 FROM caddy:2-alpine
 COPY docker/selfhost/Caddyfile /etc/caddy/Caddyfile
 COPY --from=frontend-builder /app/apps/web/dist /srv/frontend
