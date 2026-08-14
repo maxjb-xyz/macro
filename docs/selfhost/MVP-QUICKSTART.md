@@ -21,11 +21,22 @@ cp .env.example .env
 ## 2. Boot the stack
 
 ```bash
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d
+docker compose -f compose.yml \
+  -f docker/selfhost/compose.frontend.yml up -d --wait
 ```
 
 The first run builds all service images (the Rust bundle and the frontend
 proxy); expect it to take a while and consume roughly 60 GB of Docker disk.
+
+On first boot the stack self-provisions:
+
+- **Postgres schema** — `postgres_bootstrap` creates `macrodb` and applies all
+  `crates/macro_db_client/migrations` (251 files) in version order.
+- **FusionAuth** — a full kickstart creates the Macro application, tenant
+  passwordless config (6-digit code via Mailpit), the JWT population lambda,
+  and the user create/delete webhooks.
+
+Both are idempotent: re-running `up` on an existing data volume skips them.
 
 ## 3. Open the app
 
@@ -35,10 +46,10 @@ http://localhost/app/
 
 (HTTP on port 80 — the proxy redirects `/` to `/app/`.)
 
-## 4. Sign in (passwordless)
+## 4. Sign up / sign in (passwordless)
 
-1. On the login page, enter your email and request a code.
-2. The code is captured by Mailpit, not real email:
+1. On the login page, choose **Continue with email** and enter any address.
+2. The 6-digit code is captured by Mailpit, not real email:
    ```text
    http://localhost/mailpit/
    ```
@@ -73,6 +84,8 @@ are stubbed or disabled locally:
   normalized cache degrades to network-only at runtime. Build it with
   `just build-cache-wasm` and place it at
   `apps/web/src/lib/graphql-cache/wasm/` to restore it.
+- The `analytics_proxy` worker has an upstream build error (`hono` unresolved);
+  it is telemetry-only and excluded from the proxy's start gate.
 - The stack is single-node and single-instance. It is a production-appliance
   prototype, not a horizontally scalable deployment.
 
@@ -84,14 +97,20 @@ docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml down
 
 Do **not** use `down -v` — that deletes all data volumes.
 
-## Optional: seed sample content
+## Optional: seed sample content (incomplete)
+
+`docker/selfhost/compose.seed.yml` defines a one-shot bootstrap service that
+migrates the DB and seeds an admin + workspace + sample document via
+`seed_cli scenario bootstrap`. It is not yet wired into a published image —
+the `seed_cli` binary must be added to the `services_bundle` build before the
+overlay works standalone. Until then, seed on the host (requires Rust + `just`):
 
 ```bash
 just seed-scenario apply --file tooling/seed_cli/seed/scenarios/team-perms.json
 just seed-scenario status --file tooling/seed_cli/seed/scenarios/team-perms.json
 ```
 
-`status` prints persona login links. Requires the Rust toolchain (`just`).
+`status` prints persona login links.
 
 ## Next steps toward production
 
