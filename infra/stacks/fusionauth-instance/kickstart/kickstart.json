@@ -1,10 +1,14 @@
 {
+  "//": "GENERATED for self-host. Deterministic local FusionAuth bootstrap. Do not edit.",
   "apiKeys": [
     {
       "key": "bf69486b-4733-4954-a44e-2e1b5f2c8a91",
       "description": "Local Development API Key"
     }
   ],
+  "variables": {
+    "defaultTenantId": "11111111-1111-4111-8111-111111111111"
+  },
   "requests": [
     {
       "method": "POST",
@@ -13,9 +17,134 @@
         "key": {
           "id": "d7d09513-a3f5-401c-9685-34ab6c552453",
           "algorithm": "HS256",
-          "name": "JWT Signing Key",
+          "name": "Local JWT Signing Key",
           "secret": "super-secret-jwt-signing-key-for-local-development-only",
           "type": "HMAC"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/lambda/a7f3e8d2-4b91-4c5a-9e6f-1a2b3c4d5e6f",
+      "body": {
+        "lambda": {
+          "id": "a7f3e8d2-4b91-4c5a-9e6f-1a2b3c4d5e6f",
+          "name": "Populate JWT (local)",
+          "type": "JWTPopulate",
+          "enabled": true,
+          "body": "/* LOCAL-ONLY variant of populate_jwt.js, used by the run_local kickstart\n   (tooling/xtask/crates/xtask_local). Production enriches the JWT by calling\n   authentication-service over HTTP, but Lambda HTTP Connect is a licensed\n   FusionAuth feature that silently fails without a Reactor license. Local runs\n   unlicensed, so derive the claims instead: every user gets `macro|<email>`\n   regardless of signup method (production's webhook path lands on the same\n   convention, MacroUserIdStr::try_from_email). root_macro_id and\n   macro_organization_id are never populated: org-scoped JWT flows need the\n   licensed lambda.\n\n   BLOCK comments only in this file: FusionAuth's KickstartRunner flattens the\n   lambda body to a single line, so a `//` comment swallows all the code after\n   it. The Pulumi/API deploy path preserves newlines; kickstart does not. */\n/* biome-ignore lint/correctness/noUnusedVariables: FusionAuth invokes this by name. */\nfunction populate(jwt, user, _registration) {\n  jwt.fusion_user_id = user.id;\n  jwt.email = user.email;\n  jwt.macro_user_id = 'macro|' + user.email;\n}\n"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/email/template/33333333-3333-4333-8333-333333333333",
+      "body": {
+        "emailTemplate": {
+          "name": "Passwordless Login (local)",
+          "defaultSubject": "Your Macro login code",
+          "defaultHtmlTemplate": "<p>Your Macro login code:</p><h1>${code}</h1>",
+          "defaultTextTemplate": "Your Macro login code: ${code}",
+          "fromEmail": "noreply@macro.local"
+        }
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "/api/tenant/11111111-1111-4111-8111-111111111111",
+      "body": {
+        "tenant": {
+          "name": "Macro Local",
+          "issuer": "local.macro.com",
+          "eventConfiguration": {
+            "events": {
+              "user.create": {
+                "enabled": true,
+                "transactionType": "AbsoluteMajority"
+              },
+              "user.create.complete": {
+                "enabled": true,
+                "transactionType": "None"
+              },
+              "user.delete.complete": {
+                "enabled": true,
+                "transactionType": "None"
+              },
+              "user.email.verified": {
+                "enabled": true,
+                "transactionType": "AbsoluteMajority"
+              }
+            }
+          },
+          "jwtConfiguration": {
+            "accessTokenKeyId": "d7d09513-a3f5-401c-9685-34ab6c552453",
+            "idTokenKeyId": "d7d09513-a3f5-401c-9685-34ab6c552453",
+            "refreshTokenTimeToLiveInMinutes": 43200,
+            "timeToLiveInSeconds": 3600
+          },
+          "emailConfiguration": {
+            "host": "mailpit",
+            "port": 1025,
+            "security": "NONE",
+            "defaultFromEmail": "noreply@macro.local",
+            "defaultFromName": "Macro Local",
+            "passwordlessEmailTemplateId": "33333333-3333-4333-8333-333333333333"
+          },
+          "externalIdentifierConfiguration": {
+            "passwordlessLoginGenerator": {
+              "length": 6,
+              "type": "randomDigits"
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/application/22222222-2222-4222-8222-222222222222",
+      "tenantId": "11111111-1111-4111-8111-111111111111",
+      "body": {
+        "application": {
+          "name": "Macro",
+          "tenantId": "11111111-1111-4111-8111-111111111111",
+          "loginConfiguration": {
+            "allowTokenRefresh": true,
+            "requireAuthentication": true,
+            "generateRefreshTokens": true
+          },
+          "oauthConfiguration": {
+            "clientId": "22222222-2222-4222-8222-222222222222",
+            "clientSecret": "c3VwZXItc2VjcmV0LWxvY2FsLWNsaWVudC1zZWNyZXQtMDE",
+            "enabledGrants": [
+              "authorization_code",
+              "refresh_token"
+            ],
+            "authorizedRedirectURLs": [
+              "http://localhost/app",
+              "http://localhost:8080/oauth/redirect",
+              "http://authentication-service:8080/oauth/redirect",
+              "http://localhost:8085/oauth/redirect",
+              "https://mcp-server-local.macro.com/oauth/callback"
+            ],
+            "authorizedURLValidationPolicy": "AllowWildcards",
+            "logoutBehavior": "AllApplications",
+            "generateRefreshTokens": true,
+            "requireClientAuthentication": false
+          },
+          "jwtConfiguration": {
+            "enabled": true,
+            "accessTokenKeyId": "d7d09513-a3f5-401c-9685-34ab6c552453",
+            "idTokenKeyId": "d7d09513-a3f5-401c-9685-34ab6c552453",
+            "timeToLiveInSeconds": 3600,
+            "refreshTokenTimeToLiveInMinutes": 43200,
+            "refreshTokenExpirationPolicy": "SlidingWindow"
+          },
+          "lambdaConfiguration": {
+            "accessTokenPopulateId": "a7f3e8d2-4b91-4c5a-9e6f-1a2b3c4d5e6f"
+          },
+          "passwordlessConfiguration": {
+            "enabled": true
+          }
         }
       }
     },
@@ -29,7 +158,49 @@
         },
         "registration": {
           "applicationId": "3c219e58-ed0e-4b18-ad48-f4f92793ae32",
-          "roles": ["admin"]
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/webhook",
+      "body": {
+        "webhook": {
+          "description": "Create User Webhook",
+          "connectTimeout": 1000,
+          "readTimeout": 2000,
+          "url": "http://authentication-service:8080/webhooks/user",
+          "global": true,
+          "eventsEnabled": {
+            "user.create": true,
+            "user.create.complete": true,
+            "user.email.verified": true
+          },
+          "headers": {
+            "x-internal-auth-key": "local"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/webhook",
+      "body": {
+        "webhook": {
+          "description": "Delete User Webhook",
+          "connectTimeout": 1000,
+          "readTimeout": 2000,
+          "url": "http://authentication-service:8080/webhooks/user/delete",
+          "global": true,
+          "eventsEnabled": {
+            "user.delete.complete": true
+          },
+          "headers": {
+            "x-internal-auth-key": "local"
+          }
         }
       }
     }
