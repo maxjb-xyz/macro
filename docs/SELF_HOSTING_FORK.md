@@ -32,13 +32,26 @@ nix develop
 just doctor-local --instance selfhost --port-base 31000
 just stack up --instance selfhost --port-base 31000 --no-doppler
 just stack status --instance selfhost --port-base 31000
-just seed-scenario --instance selfhost --port-base 31000 apply --file seed/scenarios/team-perms.json
+just seed-scenario --instance selfhost --port-base 31000 apply --file tooling/seed_cli/seed/scenarios/team-perms.json
 ```
 
 The app is served from the proxy URL printed by `just stack up` and
 `just stack status`. Passwordless login emails are captured by Mailpit; use the
 Mailpit URL printed by the stack status instead of expecting real email
 delivery.
+
+For a repeatable Phase 1 evidence capture, use the smoke wrapper:
+
+```bash
+just self-host-smoke
+```
+
+The wrapper uses instance `selfhost` and port base `31000` by default. It runs
+the cheap Compose/env checks, starts `just stack up --no-doppler`, captures
+status/log/generated-file artifacts under `artifacts/self-host-smoke/`, applies
+the team permissions scenario, and leaves the stack running for browser checks.
+Use `just self-host-smoke --down` when you only need machine artifacts and want
+the stack reclaimed automatically.
 
 When finished:
 
@@ -58,6 +71,7 @@ Before changing the self-host path, run the cheap checks:
 ```bash
 just check
 docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
+just self-host-smoke --skip-stack
 ```
 
 For changes that affect boot or environment wiring, run a full disposable stack:
@@ -66,6 +80,8 @@ For changes that affect boot or environment wiring, run a full disposable stack:
 just doctor-local --instance selfhost --port-base 31000
 just stack up --instance selfhost --port-base 31000 --no-doppler
 just stack status --instance selfhost --port-base 31000 --json
+just seed-scenario --instance selfhost --port-base 31000 apply --file tooling/seed_cli/seed/scenarios/team-perms.json
+just seed-scenario --instance selfhost --port-base 31000 matrix --file tooling/seed_cli/seed/scenarios/team-perms.json
 just stack down --instance selfhost --port-base 31000
 ```
 
@@ -87,8 +103,8 @@ without privileged Macro team access.
 - Run the stack through `nix develop` and `just stack up --no-doppler`.
 - Confirm the Compose topology resolves and creates deterministic networks,
   volumes, ports, and generated env files.
-- Seed `seed/scenarios/team-perms.json` and confirm passwordless login through
-  Mailpit.
+- Seed `tooling/seed_cli/seed/scenarios/team-perms.json` and confirm
+  passwordless login through Mailpit.
 - Smoke test auth, documents, channels/messages, search, file upload/download,
   WebSockets/collaboration, and background workers.
 - Record every failure as either an upstream local-stack bug, a self-hosting
@@ -96,6 +112,71 @@ without privileged Macro team access.
 
 This phase is complete when a fresh checkout can bring up a disposable stack and
 an operator can follow the runbook without guessing.
+
+#### Phase 1 Operator Runbook
+
+Start from a fresh checkout on `main`, enter the Nix shell, and capture a clean
+working tree:
+
+```bash
+nix develop
+git status --short --branch
+just self-host-smoke
+```
+
+The smoke wrapper writes one file per command under
+`artifacts/self-host-smoke/<instance>-<timestamp>/`. Keep these files with the
+validation notes for the PR or sync:
+
+- `compose-config.out` proves the base Compose topology resolves.
+- `validate-local-compose.out` and `validate-local-env.out` prove the generated
+  local stack wiring is internally consistent.
+- `stack-status-json.out` and `stack-status.out` record endpoints, ports, and
+  container state.
+- `generated-files.txt` records generated env/Compose artifacts for the
+  instance.
+- `resource-names.txt`, `docker-network-inspect.out`, and
+  `docker-volume-inspect.out` record the deterministic Compose project,
+  networks, and volumes.
+- `seed-apply.out`, `seed-status.out`, and `seed-matrix.out` prove the team
+  permissions seed converged.
+- `docker-ps.out` and `docker-logs.out` capture runtime evidence for follow-up
+  debugging.
+
+After `just self-host-smoke` succeeds, use the proxy, frontend, and Mailpit URLs
+from `stack-status.out` to complete the browser checks in
+`manual-smoke-checklist.md`:
+
+- Auth: open one of the seeded persona login links and confirm passwordless
+  login completes; if the browser prompts for a code, read it from Mailpit.
+- Documents: open a seeded document, edit content, reload, and confirm the
+  change persists.
+- Channels/messages: send a message in a seeded channel and confirm another
+  persona with access can see it.
+- Search: search for seeded document, channel, or message text and confirm the
+  expected result appears.
+- File upload/download: upload a small disposable file, then open or download it
+  back through the app.
+- WebSockets/collaboration: open the same document as two personas and confirm
+  edits or presence arrive without a refresh.
+- Background workers: trigger a queue-backed flow, then review `docker-logs.out`
+  for successful worker processing and no crash loops.
+
+Write every issue to `failure-log.md` and classify it exactly as one of:
+
+- Upstream local-stack bug: the disposable local stack is expected to support
+  the behavior, but the current upstream machinery fails.
+- Self-hosting gap: the behavior needs fork-owned docs, Compose, env, or
+  operator glue before it can be considered self-hostable.
+- Operator decision: the behavior requires a production choice such as real
+  secrets, domains, TLS, backups, external email, object storage, observability,
+  retention, or scale settings.
+
+When finished, reclaim the disposable stack:
+
+```bash
+just stack down --instance selfhost --port-base 31000
+```
 
 ### Phase 2: Define the Operator Contract
 

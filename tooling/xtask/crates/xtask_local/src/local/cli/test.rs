@@ -34,7 +34,7 @@ fn seed_scenario_accepts_instance_and_trailing_scenario_arguments() {
         "2508",
         "apply",
         "--file",
-        "seed/scenarios/team-perms.json",
+        "tooling/seed_cli/seed/scenarios/team-perms.json",
     ])
     .unwrap();
 
@@ -44,6 +44,10 @@ fn seed_scenario_accepts_instance_and_trailing_scenario_arguments() {
     assert_eq!(args.instance.instance.as_deref(), Some("2508"));
     assert_eq!(
         args.scenario_args,
-        ["apply", "--file", "seed/scenarios/team-perms.json"]
+        [
+            "apply",
+            "--file",
+            "tooling/seed_cli/seed/scenarios/team-perms.json",
+        ]
     );
 }

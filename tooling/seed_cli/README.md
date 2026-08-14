@@ -16,17 +16,17 @@ entities (documents, tasks, projects, chats, calls, emails, messages) with the
 access edges between them — so varied permission patterns are testable
 locally. Tasks are markdown documents with the task subtype plus status and
 assignee properties (and an optional share-with-team grant). See
-`seed/scenarios/team-perms.json` for the reference example.
+`tooling/seed_cli/seed/scenarios/team-perms.json` for the reference example.
 
 ```bash
 # From the repository root (postgres + localstack must be up):
-just seed-scenario apply --file seed/scenarios/team-perms.json
-just seed-scenario matrix --file seed/scenarios/team-perms.json
-just seed-scenario status --file seed/scenarios/team-perms.json  # or no --file
-just seed-scenario reset --file seed/scenarios/team-perms.json   # or --all
+just seed-scenario apply --file tooling/seed_cli/seed/scenarios/team-perms.json
+just seed-scenario matrix --file tooling/seed_cli/seed/scenarios/team-perms.json
+just seed-scenario status --file tooling/seed_cli/seed/scenarios/team-perms.json  # or no --file
+just seed-scenario reset --file tooling/seed_cli/seed/scenarios/team-perms.json   # or --all
 
 # Target a named `run_local --instance 2508` stack.
-just seed-scenario --instance 2508 apply --file seed/scenarios/team-perms.json
+just seed-scenario --instance 2508 apply --file tooling/seed_cli/seed/scenarios/team-perms.json
 ```
 
 - `apply` deletes the scenario's own rows first and re-seeds, so it always
