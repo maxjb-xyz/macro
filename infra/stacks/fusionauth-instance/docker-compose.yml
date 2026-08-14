@@ -65,5 +65,7 @@ volumes:
 networks:
   auth-internal:
     driver: bridge
+    name: macro_auth_internal
   auth:
+    driver: bridge
     name: auth

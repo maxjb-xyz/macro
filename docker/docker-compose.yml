@@ -571,6 +571,7 @@ services:
 networks:
   services:
     driver: bridge
+    name: macro_services
   databases:
     name: databases
   auth:

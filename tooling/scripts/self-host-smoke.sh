@@ -8,6 +8,7 @@ KEEP_STACK=true
 SCENARIO_FILE="tooling/seed_cli/seed/scenarios/team-perms.json"
 COMPOSE_FILE="docker/docker-compose.yml"
 PROJECT_NAME="macro"
+ENV_FILE=".env"
 
 usage() {
   cat <<'USAGE'
@@ -19,6 +20,7 @@ capture operator evidence under artifacts/self-host-smoke/.
 Options:
   --artifacts-dir DIR    Evidence output directory
   --scenario-file FILE   Optional seed scenario path (default: tooling/seed_cli/seed/scenarios/team-perms.json)
+  --env-file FILE        Compose env file (default: .env; .env.example is used when .env is absent)
   --skip-stack           Only run cheap static checks; do not start Docker stack
   --down                 Tear the stack down after capture
   -h, --help             Show this help
@@ -36,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --scenario-file)
       SCENARIO_FILE="${2:?missing value for --scenario-file}"
+      shift 2
+      ;;
+    --env-file)
+      ENV_FILE="${2:?missing value for --env-file}"
       shift 2
       ;;
     --skip-stack)
@@ -65,7 +71,10 @@ if [[ -z "$ARTIFACTS_DIR" ]]; then
 fi
 mkdir -p "$ARTIFACTS_DIR"
 
-COMPOSE=(docker compose --project-directory . -f "$COMPOSE_FILE")
+if [[ ! -f "$ENV_FILE" && -f .env.example ]]; then
+  ENV_FILE=".env.example"
+fi
+COMPOSE=(env "MACRO_ENV_FILE=$ENV_FILE" docker compose --project-directory . -f "$COMPOSE_FILE" --env-file "$ENV_FILE")
 
 run_capture() {
   local name="$1"
@@ -98,6 +107,7 @@ require_tool() {
   echo "compose_file=$COMPOSE_FILE"
   echo "compose_project=$PROJECT_NAME"
   echo "scenario_file=$SCENARIO_FILE"
+  echo "env_file=$ENV_FILE"
   echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   git rev-parse HEAD 2>/dev/null | sed 's/^/commit=/' || true
 } >"$ARTIFACTS_DIR/summary.env"
@@ -135,6 +145,7 @@ run_capture compose-ps "${COMPOSE[@]}" ps
   echo "network=databases"
   echo "network=auth"
   echo "network=macro_services"
+  echo "network=macro_auth_internal"
   echo "volume=macro_postgres_data"
   echo "volume=macro_redis_data"
   echo "volume=macro_opensearch_data"

@@ -1,10 +1,38 @@
 # Running Locally
 
+## Compose-first self-host smoke
+
+If you only need to operate the disposable self-host stack, Docker with the
+Compose v2 plugin is the only host requirement. You do not need Nix, Rust,
+Cargo, or Just.
+
+From a fresh checkout:
+
+```bash
+cp .env.example .env
+docker compose --project-directory . -f docker/docker-compose.yml up -d
+docker compose --project-directory . -f docker/docker-compose.yml ps
+```
+
+Use `tooling/scripts/self-host-smoke.sh --down` for the scripted evidence
+capture, or reclaim a manually started stack with:
+
+```bash
+docker compose --project-directory . -f docker/docker-compose.yml down
+```
+
+The checked-in `.env.example` contains local-only placeholders. Replace it
+with an operator-managed secrets file before adding real integrations; this
+Phase 1 stack is not a production deployment contract.
+
+## Contributor development stack
+
 This guide explains how to run Macro on your machine. The local stack runs without Doppler. It runs Postgres, Redis, LocalStack, OpenSearch, Kafka, and FusionAuth in Docker, with dummy AWS credentials and fixed test secrets.
 
 ## What You Need
 
-Install these tools before you start:
+The contributor workflow below builds and reloads source code, so it additionally
+requires:
 
 1. [Nix](https://nix.dev/install-nix) package manager
 2. [Docker](https://docs.docker.com/get-docker/) with the Compose v2 plugin (Docker Desktop, OrbStack, or Colima work)
