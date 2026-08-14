@@ -1,0 +1,58 @@
+# Self-host frontend + reverse proxy overlay for Macro.
+#
+# Usage:
+#   docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d
+#
+# Adds a Caddy reverse proxy that serves the built frontend SPA and routes
+# API calls to the correct backend services. Port 80 is the single entrypoint.
+
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/selfhost/Dockerfile.proxy
+    image: macro-selfhost-proxy:dev
+    ports:
+      - "80:80"
+    networks:
+      - services
+      - databases
+      - auth-internal
+    depends_on:
+      authentication-service:
+        condition: service_healthy
+      connection_gateway:
+        condition: service_healthy
+      document_storage_service:
+        condition: service_healthy
+      email_service:
+        condition: service_healthy
+      static_file_service:
+        condition: service_healthy
+      search_processing_service:
+        condition: service_healthy
+      notification_service:
+        condition: service_healthy
+      fusionauth:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      sync_service:
+        condition: service_healthy
+      websocket_service:
+        condition: service_healthy
+      lexical_service:
+        condition: service_healthy
+      ai_editing_worker:
+        condition: service_healthy
+      analytics_proxy:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
