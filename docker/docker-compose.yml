@@ -43,8 +43,8 @@ services:
     expose:
       - "8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres_bootstrap:
+        condition: service_completed_successfully
       fusionauth:
         condition: service_healthy
       redis:
@@ -95,6 +95,9 @@ services:
     command: ["/app/out/contacts_service"]
     expose:
       - "8080"
+    depends_on:
+      postgres_bootstrap:
+        condition: service_completed_successfully
     networks:
       databases:
       services:
@@ -117,12 +120,20 @@ services:
     expose:
       - "8080"
     depends_on:
-      - document_storage_service
-      - email_service
-      - static_file_service
-      - sync_service
-      - lexical_service
-      - ai_editing_worker
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      document_storage_service:
+        condition: service_started
+      email_service:
+        condition: service_started
+      static_file_service:
+        condition: service_started
+      sync_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
+      ai_editing_worker:
+        condition: service_started
     environment:
       - OVERRIDE_DOCUMENT_STORAGE_SERVICE_URL=http://document-storage-service:8080
       - OVERRIDE_AI_EDITING_WORKER_URL=http://ai-editing-worker:8933
@@ -161,11 +172,18 @@ services:
       - OVERRIDE_SYNC_SERVICE_URL=http://sync-service:8787
       - OVERRIDE_LEXICAL_SERVICE_URL=http://lexical-service:8096
     depends_on:
-      - redis
-      - connection_gateway
-      - authentication-service
-      - sync_service
-      - lexical_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      connection_gateway:
+        condition: service_started
+      authentication-service:
+        condition: service_started
+      sync_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
     networks:
       databases:
       services:
@@ -190,8 +208,8 @@ services:
       LOCAL_AWS_URL: ${LOCAL_AWS_URL:-http://localstack:4566}
       DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL: ${DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL:-http://localstack:4566/000000000000/document-upload-finalizer-queue}
     depends_on:
-      postgres:
-        condition: service_started
+      postgres_bootstrap:
+        condition: service_completed_successfully
       sync_service:
         condition: service_started
       lexical_service:
@@ -212,6 +230,8 @@ services:
     expose:
       - "8080"
     depends_on:
+      postgres_bootstrap:
+        condition: service_completed_successfully
       authentication-service:
         condition: service_started
       document_storage_service:
@@ -246,8 +266,8 @@ services:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/pubsub_workers"]
     depends_on:
-      postgres:
-        condition: service_started
+      postgres_bootstrap:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       authentication-service:
@@ -279,6 +299,8 @@ services:
       LAST_ONLINE_REDIS_URI: ${LAST_ONLINE_REDIS_URI:-${REDIS_URI:-redis://redis:6379}}
       OVERRIDE_CONNECTION_GATEWAY_URL: http://connection-gateway:8080
     depends_on:
+      postgres_bootstrap:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       document_cognition_service:
@@ -315,8 +337,12 @@ services:
     environment:
       - OVERRIDE_LEXICAL_SERVICE_URL=http://lexical-service:8096
     depends_on:
-      - email_service
-      - lexical_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      email_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
     networks:
       databases:
       services:
