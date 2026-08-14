@@ -97,6 +97,45 @@ services:
       - kafka_data:/var/lib/kafka/data
     networks:
       - databases
+  kafka_topics:
+    image: apache/kafka:3.9.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        topics='
+          macro.bots
+          macro.calls
+          macro.channels
+          macro.chats
+          macro.documents
+          macro.email
+          macro.example
+          macro.mentions
+          macro.notifications
+          macro.projects
+          macro.properties
+          macro.soup
+          macro.teams
+          macro.webhooks
+        '
+
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list >/dev/null
+
+        for topic in $topics; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --create \
+            --if-not-exists \
+            --topic "$topic" \
+            --partitions "${KAFKA_TOPIC_PARTITIONS:-1}" \
+            --replication-factor 1
+        done
+    networks:
+      - databases
   search:
     build:
       context: ../infra/local/opensearch
