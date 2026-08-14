@@ -572,6 +572,6 @@ networks:
   services:
     driver: bridge
   databases:
-    external: true
+    name: databases
   auth:
-    external: true
+    name: auth

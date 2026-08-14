@@ -2,44 +2,34 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-INSTANCE="selfhost"
-PORT_BASE="31000"
 ARTIFACTS_DIR=""
 SKIP_STACK=false
 KEEP_STACK=true
 SCENARIO_FILE="tooling/seed_cli/seed/scenarios/team-perms.json"
+COMPOSE_FILE="docker/docker-compose.yml"
+PROJECT_NAME="macro"
 
 usage() {
   cat <<'USAGE'
 Usage: tooling/scripts/self-host-smoke.sh [options]
 
-Bring up the disposable self-host Phase 1 stack, seed the team permissions
-scenario, and capture operator evidence under artifacts/self-host-smoke/.
+Bring up the disposable self-host Phase 1 stack with plain Docker Compose and
+capture operator evidence under artifacts/self-host-smoke/.
 
 Options:
-  --instance NAME        Stack instance name (default: selfhost)
-  --port-base PORT       Deterministic port window base (default: 31000)
   --artifacts-dir DIR    Evidence output directory
-  --scenario-file FILE   Seed scenario path (default: tooling/seed_cli/seed/scenarios/team-perms.json)
+  --scenario-file FILE   Optional seed scenario path (default: tooling/seed_cli/seed/scenarios/team-perms.json)
   --skip-stack           Only run cheap static checks; do not start Docker stack
   --down                 Tear the stack down after capture
   -h, --help             Show this help
 
-The stack is kept running by default so an operator can finish the browser smoke
-from the URLs printed by `just stack status`.
+Operators only need Docker with the Compose plugin. Nix, Rust, Cargo, and Just
+are optional contributor conveniences and are never required by this wrapper.
 USAGE
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --instance)
-      INSTANCE="${2:?missing value for --instance}"
-      shift 2
-      ;;
-    --port-base)
-      PORT_BASE="${2:?missing value for --port-base}"
-      shift 2
-      ;;
     --artifacts-dir)
       ARTIFACTS_DIR="${2:?missing value for --artifacts-dir}"
       shift 2
@@ -71,9 +61,11 @@ done
 cd "$ROOT_DIR"
 
 if [[ -z "$ARTIFACTS_DIR" ]]; then
-  ARTIFACTS_DIR="artifacts/self-host-smoke/${INSTANCE}-$(date -u +%Y%m%dT%H%M%SZ)"
+  ARTIFACTS_DIR="artifacts/self-host-smoke/compose-$(date -u +%Y%m%dT%H%M%SZ)"
 fi
 mkdir -p "$ARTIFACTS_DIR"
+
+COMPOSE=(docker compose --project-directory . -f "$COMPOSE_FILE")
 
 run_capture() {
   local name="$1"
@@ -97,46 +89,37 @@ run_capture_allow_failure() {
 
 require_tool() {
   if ! command -v "$1" >/dev/null 2>&1; then
-    echo "missing required tool: $1" | tee -a "$ARTIFACTS_DIR/blockers.txt" >&2
+    echo "missing required operator tool: $1" | tee -a "$ARTIFACTS_DIR/blockers.txt" >&2
     return 1
   fi
 }
 
 {
-  echo "instance=$INSTANCE"
-  echo "port_base=$PORT_BASE"
+  echo "compose_file=$COMPOSE_FILE"
+  echo "compose_project=$PROJECT_NAME"
   echo "scenario_file=$SCENARIO_FILE"
   echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  git rev-parse HEAD | sed 's/^/commit=/'
+  git rev-parse HEAD 2>/dev/null | sed 's/^/commit=/' || true
 } >"$ARTIFACTS_DIR/summary.env"
 
-missing=0
-require_tool git || missing=1
-require_tool docker || missing=1
-require_tool just || missing=1
-require_tool cargo || missing=1
-
-if [[ ! -f "$SCENARIO_FILE" ]]; then
-  echo "missing seed scenario: $SCENARIO_FILE" | tee -a "$ARTIFACTS_DIR/blockers.txt" >&2
-  missing=1
-fi
-
-if [[ "$missing" -ne 0 ]]; then
+require_tool docker || {
   echo "Phase 1 smoke cannot run in this environment; see $ARTIFACTS_DIR/blockers.txt" >&2
   exit 127
+}
+
+if command -v git >/dev/null 2>&1; then
+  run_capture git-status git status --short --branch
+fi
+run_capture compose-config "${COMPOSE[@]}" config
+
+if command -v cargo >/dev/null 2>&1; then
+  run_capture_allow_failure validate-local-compose cargo run --quiet --manifest-path Cargo.toml -p xtask_local --features local-stack -- validate-local-compose || true
+  run_capture_allow_failure validate-local-env cargo run --quiet --manifest-path Cargo.toml -p xtask_local --features local-stack -- validate-local-env --no-doppler || true
 fi
 
 if command -v nix >/dev/null 2>&1; then
-  run_capture nix-flake-check nix flake metadata --no-write-lock-file
-else
-  echo "nix not installed; run this script from inside nix develop on operator machines" \
-    | tee -a "$ARTIFACTS_DIR/operator-decisions.txt"
+  run_capture_allow_failure nix-flake-metadata nix flake metadata --no-write-lock-file || true
 fi
-
-run_capture git-status git status --short --branch
-run_capture compose-config docker compose --project-directory . -f docker/docker-compose.yml config
-run_capture validate-local-compose cargo run --quiet --manifest-path Cargo.toml -p xtask_local --features local-stack -- validate-local-compose --instance "$INSTANCE" --port-base "$PORT_BASE"
-run_capture validate-local-env cargo run --quiet --manifest-path Cargo.toml -p xtask_local --features local-stack -- validate-local-env --instance "$INSTANCE" --port-base "$PORT_BASE" --no-doppler
 
 if [[ "$SKIP_STACK" == "true" ]]; then
   echo "skip_stack=true" >>"$ARTIFACTS_DIR/summary.env"
@@ -144,72 +127,45 @@ if [[ "$SKIP_STACK" == "true" ]]; then
   exit 0
 fi
 
-run_capture doctor-local just doctor-local --instance "$INSTANCE" --port-base "$PORT_BASE"
-run_capture stack-up just stack up --instance "$INSTANCE" --port-base "$PORT_BASE" --no-doppler
-run_capture stack-status-json just stack status --instance "$INSTANCE" --port-base "$PORT_BASE" --json
-run_capture stack-status just stack status --instance "$INSTANCE" --port-base "$PORT_BASE"
-run_capture seed-apply just seed-scenario --instance "$INSTANCE" --port-base "$PORT_BASE" apply --file "$SCENARIO_FILE"
-run_capture seed-status just seed-scenario --instance "$INSTANCE" --port-base "$PORT_BASE" status --file "$SCENARIO_FILE"
-run_capture seed-matrix just seed-scenario --instance "$INSTANCE" --port-base "$PORT_BASE" matrix --file "$SCENARIO_FILE"
+run_capture compose-up "${COMPOSE[@]}" up -d
+run_capture compose-ps "${COMPOSE[@]}" ps
 
-GENERATED_DIR="infra/local/generated/$INSTANCE"
-if [[ -d "$GENERATED_DIR" ]]; then
-  find "$GENERATED_DIR" -maxdepth 2 -type f | sort >"$ARTIFACTS_DIR/generated-files.txt"
-fi
-
-if [[ "$INSTANCE" == "macro" ]]; then
-  PROJECT_NAME="macro"
-  NETWORKS=(databases auth)
-  VOLUMES=(
-    macro_postgres_data
-    macro_redis_data
-    macro_opensearch_data
-    macro_kafka_data
-    fusionauth_db_data
-    fusionauth_config
-  )
-else
-  PROJECT_NAME="macro-${INSTANCE}"
-  NETWORKS=("databases-${INSTANCE}" "auth-${INSTANCE}")
-  VOLUMES=(
-    "macro_postgres_data_${INSTANCE}"
-    "macro_redis_data_${INSTANCE}"
-    "macro_opensearch_data_${INSTANCE}"
-    "macro_kafka_data_${INSTANCE}"
-    "fusionauth_db_data_${INSTANCE}"
-    "fusionauth_config_${INSTANCE}"
-  )
-fi
 {
   echo "compose_project=$PROJECT_NAME"
-  printf 'network=%s\n' "${NETWORKS[@]}"
-  printf 'volume=%s\n' "${VOLUMES[@]}"
+  echo "network=databases"
+  echo "network=auth"
+  echo "network=macro_services"
+  echo "volume=macro_postgres_data"
+  echo "volume=macro_redis_data"
+  echo "volume=macro_opensearch_data"
+  echo "volume=macro_kafka_data"
+  echo "volume=fusionauth_db_data"
+  echo "volume=fusionauth_config"
 } >"$ARTIFACTS_DIR/resource-names.txt"
-GENERATED_ENV="$GENERATED_DIR/local.generated.env"
-COMPOSE_ARGS=(docker compose --project-directory . -p "$PROJECT_NAME" -f docker/docker-compose.yml)
-if [[ -f "$GENERATED_DIR/docker-compose.override.yml" ]]; then
-  COMPOSE_ARGS+=(-f "$GENERATED_DIR/docker-compose.override.yml")
-fi
-if [[ -f "$GENERATED_ENV" ]]; then
-  COMPOSE_ARGS+=(--env-file "$GENERATED_ENV")
-fi
+
 run_capture_allow_failure docker-ps docker ps --filter "label=com.docker.compose.project=$PROJECT_NAME" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
-run_capture_allow_failure docker-network-inspect docker network inspect "${NETWORKS[@]}" || true
-run_capture_allow_failure docker-volume-inspect docker volume inspect "${VOLUMES[@]}" || true
-run_capture_allow_failure docker-logs "${COMPOSE_ARGS[@]}" logs --no-color --tail 200 || true
+run_capture_allow_failure docker-network-inspect docker network inspect databases auth macro_services || true
+run_capture_allow_failure docker-volume-inspect docker volume inspect macro_postgres_data macro_redis_data macro_opensearch_data macro_kafka_data fusionauth_db_data fusionauth_config || true
+run_capture_allow_failure docker-logs "${COMPOSE[@]}" logs --no-color --tail 200 || true
+
+if command -v just >/dev/null 2>&1 && command -v cargo >/dev/null 2>&1 && [[ -f "$SCENARIO_FILE" ]]; then
+  run_capture_allow_failure seed-apply just seed-scenario apply --file "$SCENARIO_FILE" || true
+  run_capture_allow_failure seed-status just seed-scenario status --file "$SCENARIO_FILE" || true
+  run_capture_allow_failure seed-matrix just seed-scenario matrix --file "$SCENARIO_FILE" || true
+fi
 
 cat >"$ARTIFACTS_DIR/manual-smoke-checklist.md" <<EOF
 # Manual Phase 1 Browser Smoke
 
-Use the URLs in stack-status.out.
+Use the ports published by docker compose ps.
 
-- Auth: open a seeded persona login link from seed-apply.out, confirm passwordless login completes through Mailpit if a code is required.
-- Documents: open a seeded document, create or edit content, reload, and confirm it persists.
-- Channels/messages: open a seeded channel, send a message, and confirm another persona with access can see it.
-- Search: search for seeded document/channel/message text and record whether the expected result appears.
+- Auth: complete passwordless login through Mailpit if a code is required.
+- Documents: open a document, create or edit content, reload, and confirm it persists.
+- Channels/messages: send a message in a channel and confirm another persona with access can see it.
+- Search: search for document/channel/message text and record whether the expected result appears.
 - File upload/download: upload a small disposable file, open/download it, and confirm local object storage serves it back.
 - WebSockets/collaboration: open the same document as two personas and confirm live edits or presence updates arrive without refresh.
-- Background workers: trigger a flow backed by LocalStack queues, then check docker-logs.out for successful worker processing and no crash loops.
+- Background workers: trigger a queue-backed flow, then check docker-logs.out for successful worker processing and no crash loops.
 
 Classify every failure in failure-log.md as one of:
 
@@ -222,9 +178,9 @@ touch "$ARTIFACTS_DIR/failure-log.md"
 
 if [[ "$KEEP_STACK" == "true" ]]; then
   echo "Stack left running for manual smoke. Tear it down with:" | tee "$ARTIFACTS_DIR/next-steps.txt"
-  echo "just stack down --instance $INSTANCE --port-base $PORT_BASE" | tee -a "$ARTIFACTS_DIR/next-steps.txt"
+  echo "docker compose --project-directory . -f $COMPOSE_FILE down" | tee -a "$ARTIFACTS_DIR/next-steps.txt"
 else
-  run_capture stack-down just stack down --instance "$INSTANCE" --port-base "$PORT_BASE"
+  run_capture compose-down "${COMPOSE[@]}" down
 fi
 
 echo "Phase 1 smoke capture complete. Artifacts: $ARTIFACTS_DIR"

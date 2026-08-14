@@ -108,17 +108,13 @@ services:
 
 networks:
   databases:
-    external: true
+    name: databases
 volumes:
   db:
     name: macro_postgres_data
-    external: true
   cache:
     name: macro_redis_data
-    external: true
   opensearch_data:
     name: macro_opensearch_data
-    external: true
   kafka_data:
     name: macro_kafka_data
-    external: true

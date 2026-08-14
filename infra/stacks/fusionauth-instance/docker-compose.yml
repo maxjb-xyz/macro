@@ -59,13 +59,11 @@ services:
 volumes:
   db_data:
     name: fusionauth_db_data
-    external: true
   fusionauth_config:
     name: fusionauth_config
-    external: true
 
 networks:
   auth-internal:
     driver: bridge
   auth:
-    external: true
+    name: auth

@@ -8,15 +8,17 @@ cost of each divergence visible.
 
 ## Current Baseline
 
-Upstream already ships a local Compose stack and a headless stack runner:
+Upstream already ships a local Compose stack and optional developer runners:
 
 - `docs/RUNNING_LOCALLY.md` is the source of truth for booting Macro locally.
 - `docker/docker-compose.yml` includes the app services and local dependencies.
 - `docker/docker-compose-databases.yml` runs Postgres, Redis, Kafka, and
   OpenSearch.
 - `infra/stacks/fusionauth-instance/docker-compose.yml` runs local FusionAuth.
-- `just run_local --no-doppler` starts the interactive developer stack.
-- `just stack up` starts the same topology headlessly with a built frontend.
+- `docker compose --project-directory . -f docker/docker-compose.yml up -d`
+  starts the operator stack directly.
+- `just run_local --no-doppler` and `just stack up` remain upstream developer
+  conveniences around the same local topology.
 
 The upstream public docs still describe self-hosting at a high level. They do
 not yet define an operator-owned, long-lived Docker Compose deployment process.
@@ -25,38 +27,39 @@ stack that can boot the full app and expose the missing production decisions.
 
 ## Milestone 0: Disposable Compose Stack
 
-Use the upstream local stack without Doppler as the first self-host smoke test:
+Use the upstream Compose stack as the first self-host smoke test:
 
 ```bash
-nix develop
-just doctor-local --instance selfhost --port-base 31000
-just stack up --instance selfhost --port-base 31000 --no-doppler
-just stack status --instance selfhost --port-base 31000
-just seed-scenario --instance selfhost --port-base 31000 apply --file tooling/seed_cli/seed/scenarios/team-perms.json
+docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
+docker compose --project-directory . -f docker/docker-compose.yml up -d
+docker compose --project-directory . -f docker/docker-compose.yml ps
 ```
 
-The app is served from the proxy URL printed by `just stack up` and
-`just stack status`. Passwordless login emails are captured by Mailpit; use the
-Mailpit URL printed by the stack status instead of expecting real email
-delivery.
+Operators only need Docker with the Compose plugin for this Phase 1 path. Nix,
+Rust, Cargo, and Just may be used by contributors while developing the fork, but
+they are not required to start the self-host stack.
+
+The app is served from the Compose-published proxy/frontend ports. Passwordless
+login emails are captured by Mailpit; use the Mailpit container's published URL
+instead of expecting real email delivery.
 
 For a repeatable Phase 1 evidence capture, use the smoke wrapper:
 
 ```bash
-just self-host-smoke
+tooling/scripts/self-host-smoke.sh
 ```
 
-The wrapper uses instance `selfhost` and port base `31000` by default. It runs
-the cheap Compose/env checks, starts `just stack up --no-doppler`, captures
-status/log/generated-file artifacts under `artifacts/self-host-smoke/`, applies
-the team permissions scenario, and leaves the stack running for browser checks.
-Use `just self-host-smoke --down` when you only need machine artifacts and want
-the stack reclaimed automatically.
+The wrapper runs the cheap Compose checks, starts the stack with
+`docker compose up -d`, captures status/log/resource artifacts under
+`artifacts/self-host-smoke/`, and leaves the stack running for browser checks.
+Use `tooling/scripts/self-host-smoke.sh --down` when you only need machine
+artifacts and want the stack reclaimed automatically. `just self-host-smoke` is
+an optional contributor shortcut for the same script.
 
 When finished:
 
 ```bash
-just stack down --instance selfhost --port-base 31000
+docker compose --project-directory . -f docker/docker-compose.yml down
 ```
 
 This milestone is intentionally disposable. It proves the service graph, local
@@ -69,27 +72,27 @@ production-grade secrets.
 Before changing the self-host path, run the cheap checks:
 
 ```bash
-just check
 docker compose --project-directory . -f docker/docker-compose.yml config >/dev/null
-just self-host-smoke --skip-stack
+tooling/scripts/self-host-smoke.sh --skip-stack
 ```
 
 For changes that affect boot or environment wiring, run a full disposable stack:
 
 ```bash
+tooling/scripts/self-host-smoke.sh --down
+```
+
+Contributors can also run the upstream developer gates when Nix/Rust/Cargo/Just
+are installed:
+
+```bash
+just check
 just doctor-local --instance selfhost --port-base 31000
 just stack up --instance selfhost --port-base 31000 --no-doppler
 just stack status --instance selfhost --port-base 31000 --json
 just seed-scenario --instance selfhost --port-base 31000 apply --file tooling/seed_cli/seed/scenarios/team-perms.json
 just seed-scenario --instance selfhost --port-base 31000 matrix --file tooling/seed_cli/seed/scenarios/team-perms.json
 just stack down --instance selfhost --port-base 31000
-```
-
-For user-facing smoke coverage, seed data and run the local E2E suite when the
-machine has enough CPU, memory, Docker disk, and network access for browser
-dependencies:
-
-```bash
 just local-e2e --instance selfhost-e2e --port-base 32000
 ```
 
@@ -100,7 +103,8 @@ just local-e2e --instance selfhost-e2e --port-base 32000
 The first goal is to prove that the upstream local stack can boot from this fork
 without privileged Macro team access.
 
-- Run the stack through `nix develop` and `just stack up --no-doppler`.
+- Run the operator stack with
+  `docker compose --project-directory . -f docker/docker-compose.yml up -d`.
 - Confirm the Compose topology resolves and creates deterministic networks,
   volumes, ports, and generated env files.
 - Seed `tooling/seed_cli/seed/scenarios/team-perms.json` and confirm
@@ -115,13 +119,11 @@ an operator can follow the runbook without guessing.
 
 #### Phase 1 Operator Runbook
 
-Start from a fresh checkout on `main`, enter the Nix shell, and capture a clean
-working tree:
+Start from a fresh checkout on `main` and capture a clean working tree:
 
 ```bash
-nix develop
 git status --short --branch
-just self-host-smoke
+tooling/scripts/self-host-smoke.sh
 ```
 
 The smoke wrapper writes one file per command under
@@ -129,23 +131,19 @@ The smoke wrapper writes one file per command under
 validation notes for the PR or sync:
 
 - `compose-config.out` proves the base Compose topology resolves.
-- `validate-local-compose.out` and `validate-local-env.out` prove the generated
-  local stack wiring is internally consistent.
-- `stack-status-json.out` and `stack-status.out` record endpoints, ports, and
-  container state.
-- `generated-files.txt` records generated env/Compose artifacts for the
-  instance.
+- `compose-up.out` records the direct `docker compose up -d` operator startup.
+- `compose-ps.out` records container state.
 - `resource-names.txt`, `docker-network-inspect.out`, and
   `docker-volume-inspect.out` record the deterministic Compose project,
   networks, and volumes.
-- `seed-apply.out`, `seed-status.out`, and `seed-matrix.out` prove the team
-  permissions seed converged.
 - `docker-ps.out` and `docker-logs.out` capture runtime evidence for follow-up
   debugging.
+- When `just` and `cargo` are installed, optional `validate-local-compose.out`,
+  `validate-local-env.out`, `seed-apply.out`, `seed-status.out`, and
+  `seed-matrix.out` artifacts may be present as contributor evidence.
 
-After `just self-host-smoke` succeeds, use the proxy, frontend, and Mailpit URLs
-from `stack-status.out` to complete the browser checks in
-`manual-smoke-checklist.md`:
+After `tooling/scripts/self-host-smoke.sh` succeeds, use the published Compose
+ports to complete the browser checks in `manual-smoke-checklist.md`:
 
 - Auth: open one of the seeded persona login links and confirm passwordless
   login completes; if the browser prompts for a code, read it from Mailpit.
@@ -175,7 +173,7 @@ Write every issue to `failure-log.md` and classify it exactly as one of:
 When finished, reclaim the disposable stack:
 
 ```bash
-just stack down --instance selfhost --port-base 31000
+docker compose --project-directory . -f docker/docker-compose.yml down
 ```
 
 ### Phase 2: Define the Operator Contract
