@@ -48,7 +48,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 2
 fi
 
-COMPOSE=(docker compose --project-directory . --file "$COMPOSE_FILE" --project-name "$PROJECT_NAME" --env-file "$ENV_FILE")
+# Compose's --env-file feeds interpolation, while each service's env_file is
+# driven by MACRO_ENV_FILE. Keep those aligned so the handoff can validate from
+# .env.example without requiring a copied .env file.
+COMPOSE=(env "MACRO_ENV_FILE=$ENV_FILE" docker compose --project-directory . --file "$COMPOSE_FILE" --project-name "$PROJECT_NAME" --env-file "$ENV_FILE")
 
 record() {
   local name="$1"
@@ -117,7 +120,7 @@ if [[ "$KEEP_STACK" == "false" ]]; then
 else
   cat >"$ARTIFACTS_DIR/next-steps.txt" <<EOF
 Stack left running for manual checks. Reclaim it with:
-docker compose --project-directory . -f $COMPOSE_FILE --project-name $PROJECT_NAME --env-file $ENV_FILE down
+MACRO_ENV_FILE=$ENV_FILE docker compose --project-directory . -f $COMPOSE_FILE --project-name $PROJECT_NAME --env-file $ENV_FILE down
 EOF
 fi
 
