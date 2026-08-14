@@ -69,17 +69,18 @@ retention policy. Configure the bucket, region, endpoint, and credentials in
 the operator `.env` and verify the document/static-file event and queue
 contracts before cutover.
 
-LocalStack and the local CloudFront-shaped proxy in the base stack are smoke
-test dependencies, not a production object-storage choice. Do not point a
-long-lived deployment at them without a separately designed persistence and
-recovery plan.
+The base stack starts LocalStack and provisions the local buckets, queues, and
+tables needed by smoke tests. LocalStack and the local CloudFront-shaped proxy
+are not a production object-storage choice. Do not point a long-lived
+deployment at them without a separately designed persistence and recovery plan.
 
 ## Mail and authentication
 
-Mailpit is for local smoke tests only. Configure a real SMTP relay, sender
-domain, SPF/DKIM/DMARC, and bounce handling before enabling passwordless login
-for users. Replace all `local` auth keys and FusionAuth API/client secrets;
-rotate them as operator-managed secrets rather than committing them to `.env`.
+Mailpit is included for local smoke tests only. Configure a real SMTP relay,
+sender domain, SPF/DKIM/DMARC, and bounce handling before enabling passwordless
+login for users. Replace all `local` auth keys and FusionAuth API/client
+secrets; rotate them as operator-managed secrets rather than committing them to
+`.env`.
 
 Google/Gmail, GitHub, Stripe, LiveKit, model providers, push notifications, and
 calendar/webhook integrations are not optional product surfaces. Their local

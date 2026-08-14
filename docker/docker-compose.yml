@@ -339,6 +339,52 @@ services:
           - static-file-cdn
 
   # ============================================================================
+  # localstack (Port 4566)
+  # Local AWS emulation for S3, SQS, and DynamoDB.
+  # ============================================================================
+  localstack:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: sqs,dynamodb,s3
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./docker/localstack/init/ready.d:/etc/localstack/init/ready.d:ro
+    networks:
+      databases:
+        aliases:
+          - localstack
+      services:
+        aliases:
+          - localstack
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # ============================================================================
+  # mailpit (SMTP 1025, UI 8025)
+  # Local passwordless-login and outbound-email sink.
+  # ============================================================================
+  mailpit:
+    image: axllent/mailpit:v1.20
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      services:
+        aliases:
+          - mailpit
+      auth:
+        aliases:
+          - mailpit
+
+  # ============================================================================
   # unfurl_service (Port 8095)
   # URL unfurling - no dependencies
   # ============================================================================
