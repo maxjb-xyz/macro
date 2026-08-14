@@ -20,11 +20,29 @@ services:
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=macrodb
       - PGPASSWORD=password
     volumes:
       # pg18+ images keep PGDATA in a version-specific subdir; mount the parent
       # so the data dir lands inside the volume (see docker-library/postgres#1259).
       - db:/var/lib/postgresql
+    networks:
+      - databases
+  postgres_bootstrap:
+    image: pgvector/pgvector:pg18
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: password
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        if ! psql -h postgres -U user -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'macrodb'" | grep -q 1; then
+          createdb -h postgres -U user macrodb
+        fi
     networks:
       - databases
   redis:
