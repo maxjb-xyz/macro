@@ -1,0 +1,35 @@
+# Operator overlay for the upstream local Compose topology.
+#
+# Usage:
+#   docker compose --project-directory . \
+#     -f compose.yml \
+#     -f docker/docker-compose.self-host.yml up -d
+#
+# The base file owns the named data volumes. This file only changes container
+# lifecycle behavior; it does not replace the upstream service graph.
+
+services:
+  postgres:
+    restart: unless-stopped
+    stop_grace_period: 60s
+  redis:
+    restart: unless-stopped
+    stop_grace_period: 30s
+  kafka:
+    restart: unless-stopped
+    stop_grace_period: 60s
+  search:
+    restart: unless-stopped
+    stop_grace_period: 60s
+  db:
+    restart: unless-stopped
+    stop_grace_period: 60s
+  fusionauth:
+    restart: unless-stopped
+    stop_grace_period: 60s
+  localstack:
+    restart: unless-stopped
+    stop_grace_period: 60s
+  mailpit:
+    restart: unless-stopped
+    stop_grace_period: 30s

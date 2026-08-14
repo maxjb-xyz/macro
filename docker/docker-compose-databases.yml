@@ -15,13 +15,12 @@ services:
       interval: 2s
       timeout: 5s
       retries: 15
-    ports:
-      - '5432:5432'
     expose:
       - '5432'
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=macrodb
       - PGPASSWORD=password
     volumes:
       # pg18+ images keep PGDATA in a version-specific subdir; mount the parent
@@ -29,13 +28,35 @@ services:
       - db:/var/lib/postgresql
     networks:
       - databases
+  postgres_bootstrap:
+    image: pgvector/pgvector:pg18
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: password
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        if ! psql -h postgres -U user -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'macrodb'" | grep -q 1; then
+          createdb -h postgres -U user macrodb
+        fi
+    networks:
+      - databases
   redis:
     image: 'redis/redis-stack:latest'
-    ports:
-      - '6379:6379' # Expose Redis on the default port
-      - '8001:8001' # Expose Redis Stack Server UI/tools
+    expose:
+      - '6379'
+      - '8001'
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
     volumes:
       - cache:/data
     networks:
@@ -50,7 +71,7 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       # Dual listeners: `kafka:29092` for containers on the databases network,
-      # `localhost:9092` for processes on the host.
+      # `localhost:9092` for optional in-network debug clients.
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
@@ -69,10 +90,65 @@ services:
       interval: 5s
       timeout: 10s
       retries: 20
-    ports:
-      - '9092:9092'
+    expose:
+      - '29092'
+      - '9092'
     volumes:
       - kafka_data:/var/lib/kafka/data
+    networks:
+      - databases
+  kafka_topics:
+    image: apache/kafka:3.9.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        topics='
+          macro.bots
+          macro.calls
+          macro.channels
+          macro.chats
+          macro.documents
+          macro.email
+          macro.example
+          macro.mentions
+          macro.notifications
+          macro.projects
+          macro.properties
+          macro.soup
+          macro.teams
+          macro.webhooks
+        '
+
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list >/dev/null
+
+        for topic in $$topics; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --create \
+            --if-not-exists \
+            --topic "$$topic" \
+            --partitions "$${KAFKA_TOPIC_PARTITIONS:-1}" \
+            --replication-factor 1
+        done
+
+        for topic in $$topics; do
+          attempts=0
+          until /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:29092 \
+            --describe \
+            --topic "$$topic" >/dev/null 2>&1; do
+            attempts=$$((attempts + 1))
+            if [ "$$attempts" -ge 30 ]; then
+              echo "Kafka topic was not visible after creation: $$topic" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+        done
     networks:
       - databases
   search:
@@ -98,9 +174,9 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    ports:
-      - 9200:9200 # REST API
-      - 9600:9600 # Performance Analyzer
+    expose:
+      - '9200'
+      - '9600'
     networks:
       - databases
     volumes:
@@ -108,17 +184,14 @@ services:
 
 networks:
   databases:
-    external: true
+    driver: bridge
+    name: databases
 volumes:
   db:
     name: macro_postgres_data
-    external: true
   cache:
     name: macro_redis_data
-    external: true
   opensearch_data:
     name: macro_opensearch_data
-    external: true
   kafka_data:
     name: macro_kafka_data
-    external: true

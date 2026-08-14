@@ -40,12 +40,17 @@ services:
   authentication-service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/authentication_service"]
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     depends_on:
-      - postgres
-      - fusionauth
-      - redis
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      fusionauth:
+        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     networks:
       - auth
       - databases
@@ -59,15 +64,18 @@ services:
 
   # ============================================================================
   # connection_gateway (Port 8082)
-  # WebSocket gateway - Redis only
+  # WebSocket gateway - Redis and DynamoDB
   # ============================================================================
   connection_gateway:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/connection_gateway_service"]
-    ports:
-      - "8082:8080"
+    expose:
+      - "8080"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -87,8 +95,11 @@ services:
   contacts_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/contacts_service"]
-    ports:
-      - "8083:8080"
+    expose:
+      - "8080"
+    depends_on:
+      postgres_bootstrap:
+        condition: service_completed_successfully
     networks:
       databases:
       services:
@@ -108,15 +119,25 @@ services:
   document_cognition_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/document_cognition_service"]
-    ports:
-      - "8085:8080"
+    expose:
+      - "8080"
     depends_on:
-      - document_storage_service
-      - email_service
-      - static_file_service
-      - sync_service
-      - lexical_service
-      - ai_editing_worker
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      kafka_topics:
+        condition: service_completed_successfully
+      document_storage_service:
+        condition: service_started
+      email_service:
+        condition: service_started
+      static_file_service:
+        condition: service_started
+      sync_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
+      ai_editing_worker:
+        condition: service_started
     environment:
       - OVERRIDE_DOCUMENT_STORAGE_SERVICE_URL=http://document-storage-service:8080
       - OVERRIDE_AI_EDITING_WORKER_URL=http://ai-editing-worker:8933
@@ -145,8 +166,8 @@ services:
   document_storage_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/document_storage_service"]
-    ports:
-      - "8086:8080"
+    expose:
+      - "8080"
     environment:
       # - OVERRIDE_SYNC_SERVICE_URL=https://sync-service-playground.macroverse.workers.dev
       # uncomment above, and comment out below, for when you want to use the playground sync service. also use
@@ -155,11 +176,22 @@ services:
       - OVERRIDE_SYNC_SERVICE_URL=http://sync-service:8787
       - OVERRIDE_LEXICAL_SERVICE_URL=http://lexical-service:8096
     depends_on:
-      - redis
-      - connection_gateway
-      - authentication-service
-      - sync_service
-      - lexical_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
+      search:
+        condition: service_healthy
+      connection_gateway:
+        condition: service_started
+      authentication-service:
+        condition: service_started
+      sync_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
     networks:
       databases:
       services:
@@ -184,9 +216,14 @@ services:
       LOCAL_AWS_URL: ${LOCAL_AWS_URL:-http://localstack:4566}
       DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL: ${DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL:-http://localstack:4566/000000000000/document-upload-finalizer-queue}
     depends_on:
-      - postgres
-      - sync_service
-      - lexical_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      sync_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - databases
       - services
@@ -198,14 +235,25 @@ services:
   email_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/email_service"]
-    ports:
-      - "8087:8080"
+    expose:
+      - "8080"
     depends_on:
-      - authentication-service
-      - document_storage_service
-      - connection_gateway
-      - static_file_service
-      - redis
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_started
+      document_storage_service:
+        condition: service_started
+      connection_gateway:
+        condition: service_started
+      static_file_service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -228,13 +276,24 @@ services:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/pubsub_workers"]
     depends_on:
-      - postgres
-      - redis
-      - authentication-service
-      - document_storage_service
-      - connection_gateway
-      - static_file_service
-      - email_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
+      authentication-service:
+        condition: service_started
+      document_storage_service:
+        condition: service_started
+      connection_gateway:
+        condition: service_started
+      static_file_service:
+        condition: service_started
+      email_service:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - databases
       - services
@@ -246,17 +305,28 @@ services:
   notification_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/notification_service"]
-    ports:
-      - "8089:8080"
+    expose:
+      - "8080"
     environment:
       LAST_ONLINE_REDIS_URI: ${LAST_ONLINE_REDIS_URI:-${REDIS_URI:-redis://redis:6379}}
       OVERRIDE_CONNECTION_GATEWAY_URL: http://connection-gateway:8080
     depends_on:
-      - redis
-      - document_cognition_service
-      - authentication-service
-      - connection_gateway
-      - document_storage_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      kafka_topics:
+        condition: service_completed_successfully
+      document_cognition_service:
+        condition: service_started
+      authentication-service:
+        condition: service_started
+      connection_gateway:
+        condition: service_started
+      document_storage_service:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -276,13 +346,21 @@ services:
   search_processing_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/search_processing_service"]
-    ports:
-      - "8092:8080"
+    expose:
+      - "8080"
     environment:
       - OVERRIDE_LEXICAL_SERVICE_URL=http://lexical-service:8096
     depends_on:
-      - email_service
-      - lexical_service
+      postgres_bootstrap:
+        condition: service_completed_successfully
+      email_service:
+        condition: service_started
+      lexical_service:
+        condition: service_started
+      kafka_topics:
+        condition: service_completed_successfully
+      search:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -302,8 +380,11 @@ services:
   static_file_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/static_file_service"]
-    ports:
-      - "8094:8080"
+    expose:
+      - "8080"
+    depends_on:
+      localstack:
+        condition: service_healthy
     networks:
       databases:
       services:
@@ -322,8 +403,8 @@ services:
   # ============================================================================
   static_file_cdn:
     image: nginx:alpine
-    ports:
-      - "8100:80"
+    expose:
+      - "80"
     volumes:
       - ./infra/local/nginx/static-file-cdn.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -335,14 +416,60 @@ services:
           - static-file-cdn
 
   # ============================================================================
+  # localstack (Port 4566)
+  # Local AWS emulation for S3, SQS, and DynamoDB.
+  # ============================================================================
+  localstack:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: sqs,dynamodb,s3
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    expose:
+      - "4566"
+    volumes:
+      - ./docker/localstack/init/ready.d:/etc/localstack/init/ready.d:ro
+    networks:
+      databases:
+        aliases:
+          - localstack
+      services:
+        aliases:
+          - localstack
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # ============================================================================
+  # mailpit (SMTP 1025, UI 8025)
+  # Local passwordless-login and outbound-email sink.
+  # ============================================================================
+  mailpit:
+    image: axllent/mailpit:v1.20
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    expose:
+      - "1025"
+      - "8025"
+    networks:
+      services:
+        aliases:
+          - mailpit
+      auth:
+        aliases:
+          - mailpit
+
+  # ============================================================================
   # unfurl_service (Port 8095)
   # URL unfurling - no dependencies
   # ============================================================================
   unfurl_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/unfurl_service"]
-    ports:
-      - "8095:8080"
+    expose:
+      - "8080"
     networks:
       services:
         aliases:
@@ -361,8 +488,8 @@ services:
   image_proxy_service:
     <<: [*common-env, *rust-services-image]
     command: ["/app/out/image_proxy_service"]
-    ports:
-      - "8097:8080"
+    expose:
+      - "8080"
     networks:
       services:
         aliases:
@@ -382,8 +509,8 @@ services:
     build:
       context: .
       dockerfile: docker/websocket-service.Dockerfile
-    ports:
-      - "6969:6969"
+    expose:
+      - "6969"
     networks:
       services:
         aliases:
@@ -398,8 +525,8 @@ services:
     build:
       context: .
       dockerfile: docker/sync-service.Dockerfile
-    ports:
-      - "8787:8787"
+    expose:
+      - "8787"
     volumes:
       - ./services/sync-service/src:/app/src
     environment:
@@ -432,8 +559,8 @@ services:
     build:
       context: .
       dockerfile: docker/ai-editing-worker.Dockerfile
-    ports:
-      - "8933:8933"
+    expose:
+      - "8933"
     volumes:
       - .:/app
       # .wrangler (incl. the local D1 trace shard) persists to the host via the
@@ -459,8 +586,8 @@ services:
     build:
       context: .
       dockerfile: docker/analytics-proxy.Dockerfile
-    ports:
-      - "8098:8098"
+    expose:
+      - "8098"
     volumes:
       - .:/app
     networks:
@@ -479,8 +606,8 @@ services:
       dockerfile: docker/lexical-service.Dockerfile
       args:
         GITHUB_PACKAGES_TOKEN: ${GITHUB_PACKAGES_TOKEN}
-    ports:
-      - "8096:8096"
+    expose:
+      - "8096"
     depends_on:
       - sync_service
     # Bundle the entry before running. Executing the unbundled TS directly under
@@ -571,7 +698,4 @@ services:
 networks:
   services:
     driver: bridge
-  databases:
-    external: true
-  auth:
-    external: true
+    name: macro_services

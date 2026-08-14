@@ -1,10 +1,44 @@
 # Running Locally
 
+## Compose-first self-host smoke
+
+If you only need to operate the disposable self-host stack, Docker with the
+Compose v2 plugin is the only host requirement. You do not need Nix, Rust,
+Cargo, or Just.
+
+From a fresh checkout:
+
+```bash
+cp .env.example .env
+docker compose --project-directory . -f docker/docker-compose.yml up -d
+docker compose --project-directory . -f docker/docker-compose.yml ps
+```
+
+Add `--wait` to wait for declared health checks before returning:
+
+```bash
+docker compose --project-directory . -f docker/docker-compose.yml up -d --wait
+```
+
+Use `tooling/scripts/self-host-smoke.sh --down` for the scripted evidence
+capture, or reclaim a manually started stack with:
+
+```bash
+docker compose --project-directory . -f docker/docker-compose.yml down
+```
+
+The checked-in `.env.example` contains local-only placeholders. Replace it
+with an operator-managed secrets file before adding real integrations; this
+Phase 1 stack is not a production deployment contract.
+
+## Contributor development stack
+
 This guide explains how to run Macro on your machine. The local stack runs without Doppler. It runs Postgres, Redis, LocalStack, OpenSearch, Kafka, and FusionAuth in Docker, with dummy AWS credentials and fixed test secrets.
 
 ## What You Need
 
-Install these tools before you start:
+The contributor workflow below builds and reloads source code, so it additionally
+requires:
 
 1. [Nix](https://nix.dev/install-nix) package manager
 2. [Docker](https://docs.docker.com/get-docker/) with the Compose v2 plugin (Docker Desktop, OrbStack, or Colima work)
@@ -85,7 +119,7 @@ and messages. The world uses realistic permissions.
 From the repository root, after the stack is up:
 
 ```bash
-just seed-scenario apply --file seed/scenarios/team-perms.json
+just seed-scenario apply --file tooling/seed_cli/seed/scenarios/team-perms.json
 ```
 
 `apply` creates a FusionAuth account for each persona. It prints a login link per
@@ -95,9 +129,9 @@ jar. You can drive several personas side by side against one stack.
 
 Useful commands:
 
-- `just seed-scenario status --file seed/scenarios/team-perms.json` — show what is seeded and re-print the login links.
-- `just seed-scenario reset --file seed/scenarios/team-perms.json` — remove the scenario's rows and its user accounts by email.
-- `just seed-scenario matrix --file seed/scenarios/team-perms.json` — check the expected access level for every user and entity pair against the live database.
+- `just seed-scenario status --file tooling/seed_cli/seed/scenarios/team-perms.json` — show what is seeded and re-print the login links.
+- `just seed-scenario reset --file tooling/seed_cli/seed/scenarios/team-perms.json` — remove the scenario's rows and its user accounts by email.
+- `just seed-scenario matrix --file tooling/seed_cli/seed/scenarios/team-perms.json` — check the expected access level for every user and entity pair against the live database.
 
 `apply` touches only rows that carry the scenario `5eed` id marker, plus the
 persona accounts it created. It is safe to run against a stack that you tested in.
@@ -207,8 +241,8 @@ with the same `--instance` and `--port-base` values:
 
 ```bash
 just run_local --no-doppler --instance test --port-base 31000
-just seed-scenario --instance test --port-base 31000 apply --file seed/scenarios/team-perms.json
-just seed-scenario --instance test --port-base 31000 status --file seed/scenarios/team-perms.json
+just seed-scenario --instance test --port-base 31000 apply --file tooling/seed_cli/seed/scenarios/team-perms.json
+just seed-scenario --instance test --port-base 31000 status --file tooling/seed_cli/seed/scenarios/team-perms.json
 just status_local --instance test --port-base 31000
 ```
 

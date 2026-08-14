@@ -44,6 +44,12 @@ stop_local *ARGS:
 stack *ARGS:
   {{ xtask }} stack "$@"
 
+# Disposable self-host Phase 1 smoke capture.
+# Leaves the stack running by default so browser checks can be completed from
+# the printed URLs; pass `--down` to tear it down after artifacts are captured.
+self-host-smoke *ARGS:
+  tooling/scripts/self-host-smoke.sh "$@"
+
 # Start an isolated stack, seed it, and run the local Playwright suite.
 local-e2e *ARGS:
   tooling/scripts/run-local-e2e.sh --suite web -- "$@"
