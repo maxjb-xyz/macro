@@ -125,25 +125,25 @@ services:
 
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list >/dev/null
 
-        for topic in $topics; do
+        for topic in $$topics; do
           /opt/kafka/bin/kafka-topics.sh \
             --bootstrap-server kafka:29092 \
             --create \
             --if-not-exists \
-            --topic "$topic" \
-            --partitions "${KAFKA_TOPIC_PARTITIONS:-1}" \
+            --topic "$$topic" \
+            --partitions "$${KAFKA_TOPIC_PARTITIONS:-1}" \
             --replication-factor 1
         done
 
-        for topic in $topics; do
+        for topic in $$topics; do
           attempts=0
           until /opt/kafka/bin/kafka-topics.sh \
             --bootstrap-server kafka:29092 \
             --describe \
-            --topic "$topic" >/dev/null 2>&1; do
-            attempts=$((attempts + 1))
-            if [ "$attempts" -ge 30 ]; then
-              echo "Kafka topic was not visible after creation: $topic" >&2
+            --topic "$$topic" >/dev/null 2>&1; do
+            attempts=$$((attempts + 1))
+            if [ "$$attempts" -ge 30 ]; then
+              echo "Kafka topic was not visible after creation: $$topic" >&2
               exit 1
             fi
             sleep 1
@@ -160,20 +160,16 @@ services:
       discovery.type: single-node
       node.name: search
       plugins.security.disabled: true
-      bootstrap.memory_lock: true
+      # Keep local/self-host boot portable in rootless or restricted Docker hosts.
+      # Production operators can re-enable mlock in an override once the host
+      # permits RLIMIT_MEMLOCK changes.
+      bootstrap.memory_lock: false
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m" # Set min and max JVM heap sizes to at least 50% of system RAM
       OPENSEARCH_INITIAL_ADMIN_PASSWORD: "yourStrongPassword123!"
     healthcheck:
       interval: 10s
       retries: 80
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:9200/
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
     expose:
       - '9200'
       - '9600'
