@@ -176,6 +176,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      search:
+        condition: service_healthy
       connection_gateway:
         condition: service_started
       authentication-service:
@@ -343,6 +345,8 @@ services:
         condition: service_started
       lexical_service:
         condition: service_started
+      search:
+        condition: service_healthy
     networks:
       databases:
       services:
