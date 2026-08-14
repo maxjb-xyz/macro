@@ -1,0 +1,75 @@
+# Production-oriented overlay that replaces all host-built Rust dev images
+# with immutable per-service release images from a registry.
+#
+# Prerequisites:
+#   1. Build and push images:
+#        tooling/selfhost/build-release-images.sh \
+#          --registry ghcr.io/my-org --tag v2026.4.28.0 --push
+#   2. Set in your operator .env:
+#        MACRO_RELEASE_IMAGE_REGISTRY=ghcr.io/my-org
+#        MACRO_RELEASE_IMAGE_TAG=v2026.4.28.0
+#
+# Usage:
+#   docker compose --project-directory . \
+#     -f compose.yml \
+#     -f docker/docker-compose.self-host.yml \
+#     -f docker/selfhost/compose.published.yml \
+#     --env-file .env up -d
+#
+# This overlay overrides every Rust HTTP service and worker that shares the
+# production-shaped docker/Dockerfile. Special-case services
+# (search_processing_service, convert_service) and the JS/worker services
+# (sync_service, lexical_service, ai_editing_worker, analytics_proxy,
+# websocket_service) are NOT covered yet; keep them on their existing
+# Dockerfiles until dedicated release images are published.
+
+services:
+  authentication-service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY:?set MACRO_RELEASE_IMAGE_REGISTRY}/authentication-service:${MACRO_RELEASE_IMAGE_TAG:?set MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  connection_gateway:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/connection-gateway:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  contacts_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/contacts-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  document_cognition_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-cognition-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  document_storage_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-storage-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  document_upload_finalizer:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-upload-finalizer:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  email_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/email-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  email_pubsub_workers:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/email-pubsub-workers:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  notification_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/notification-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  static_file_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/static-file-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
