@@ -93,6 +93,28 @@ services:
       - ./docker/localstack/init/ready.d:/etc/localstack/init/ready.d:ro
       - localstack_data:/persisted-data
 
+  # One-shot: provision FusionAuth identity providers (Google/GitHub/Microsoft)
+  # for every integration whose credentials are set in .env. Idempotent — each
+  # IdP has a fixed Id and is created once, then updated on re-run. After
+  # changing credentials, re-run with:
+  #   docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml \
+  #     run --rm fusionauth_provision_idps
+  fusionauth_provision_idps:
+    image: python:3.12-alpine
+    restart: "no"
+    env_file:
+      - path: ${MACRO_ENV_FILE:-.env}
+        required: false
+    volumes:
+      - ./tooling/selfhost/provision_idps.py:/provision_idps.py:ro
+      - ./infra/stacks/fusionauth-instance/templates/reconcile_secondary_idp_link.js:/reconcile_secondary_idp_link.js:ro
+    command: ["python3", "/provision_idps.py"]
+    depends_on:
+      fusionauth:
+        condition: service_healthy
+    networks:
+      - auth
+
 volumes:
   localstack_data:
     name: macro_localstack_data

@@ -23,17 +23,23 @@ corresponding identity provider in FusionAuth. `GMAIL_SYNC_ENABLED` has no
 placeholder-detectable credential, so it is an explicit switch (default `false`
 in generated self-host `.env`).
 
-## ⚠️ FusionAuth identity providers are not auto-provisioned
+## FusionAuth identity providers are auto-provisioned
 
-The self-host FusionAuth kickstart (`infra/stacks/fusionauth-instance/kickstart/kickstart.json`)
-provisions the tenant, the Macro application, passwordless login, webhooks, and
-SMTP — but **not** the Google/GitHub/Microsoft identity providers. (Local dev
-gets these from the xtask `write_kickstart` path, which self-host does not run.)
+The `fusionauth_provision_idps` one-shot Compose service provisions the
+Google/GitHub/Microsoft identity providers automatically, for every integration
+whose credentials are set in `.env`. It runs after FusionAuth is healthy, is
+idempotent (each IdP has a fixed Id; re-runs update in place), and is a no-op
+when no integration is configured.
 
-For each OAuth login provider you enable, you must create the identity provider
-in FusionAuth yourself — via the admin UI (`https://<auth-host>/admin`) or the
-API. The exact field-for-field config for Google is given below; GitHub and
-Outlook follow the same OpenID Connect shape.
+Re-run it after changing credentials:
+
+```bash
+docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml \
+  run --rm fusionauth_provision_idps
+```
+
+The field-for-field IdP config below is what the provisioner applies (kept here
+for reference and for manual creation via the admin UI if you prefer that).
 
 ---
 
@@ -66,11 +72,11 @@ GMAIL_SYNC_ENABLED=true
 `google_login_enabled` defaults on; no explicit flag is needed once real creds
 are present (the placeholder check flips it on).
 
-### 1c. Create the FusionAuth identity providers
+### 1c. FusionAuth identity providers (auto-provisioned)
 
-Create **two** identity providers (generic OpenID Connect, not FusionAuth's
-built-in "Google" type — the auth service and the IdP must share the same OAuth
-client, and the endpoints stay per-IdP):
+The provisioner creates **two** Google identity providers (generic OpenID
+Connect, not FusionAuth's built-in "Google" type — the auth service and the IdP
+must share the same OAuth client, and the endpoints stay per-IdP):
 
 **`google`** — login IdP, scopes `openid profile email`:
 
@@ -245,10 +251,10 @@ End-to-end confirmation for each provider:
 
 ## Notes / gaps
 
-- **IdP auto-provisioning** is not yet wired into the self-host kickstart; the
-  IdPs above are created manually. A config-gated kickstart extension (create
-  the IdPs when their env creds are set, mirroring xtask's `write_kickstart`) is
-  the follow-up.
+- **IdP auto-provisioning** is wired into the self-host stack via the
+  `fusionauth_provision_idps` one-shot service (config-gated, idempotent). The
+  Microsoft IdP requires a **real** tenant ID — FusionAuth validates the
+  `oauth2.issuer` discovery URL at creation, so a placeholder tenant fails.
 - **Real SMTP** is separate (FusionAuth `SMTP_*` vars) and required for
   passwordless login to reach real users — see the GAP analysis §2.
 - The "on" paths above are documented from the code; they are **not** smoke-tested
