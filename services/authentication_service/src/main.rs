@@ -95,6 +95,7 @@ async fn main() -> anyhow::Result<()> {
     let microsoft_credentials = config
         .microsoft_credentials()
         .context("invalid Microsoft OAuth configuration")?;
+    let microsoft_login_configured = microsoft_credentials.is_some();
 
     let internal_api_key = config.internal_api_key.clone();
 
@@ -459,6 +460,10 @@ async fn main() -> anyhow::Result<()> {
             loops_client: Arc::new(loops_client),
             analytics_client,
             stripe_price_id: config.stripe_price_id.to_string(),
+            google_login_configured: config.google_login_configured(),
+            github_login_configured: config.github_login_configured(),
+            microsoft_login_configured,
+            stripe_configured: config.stripe_configured(),
         },
         config.port,
     )

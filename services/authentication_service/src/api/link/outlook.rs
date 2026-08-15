@@ -43,6 +43,9 @@ pub enum InitOutlookLinkError {
     /// An internal operation failed.
     #[error("internal error occurred")]
     InternalError(#[from] anyhow::Error),
+    /// The Microsoft Outlook integration is not configured for this deployment.
+    #[error("Microsoft Outlook is not configured")]
+    NotConfigured,
 }
 
 impl IntoResponse for InitOutlookLinkError {
@@ -50,6 +53,7 @@ impl IntoResponse for InitOutlookLinkError {
         let status_code = match &self {
             Self::TooManyInProgressLinks => StatusCode::TOO_MANY_REQUESTS,
             Self::IdentityProviderNotFound => StatusCode::NOT_FOUND,
+            Self::NotConfigured => StatusCode::NOT_FOUND,
             Self::InternalError(error) => {
                 tracing::error!(error=?error, "failed to initiate Outlook link");
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -96,6 +100,9 @@ pub async fn init_outlook_link_handler(
     ip_context: ClientIp,
     authorization: MacroAuthorizationExtractor<AuthorizationService, UserOrInternal>,
 ) -> Result<Json<InitOutlookLinkResponse>, InitOutlookLinkError> {
+    if !ctx.microsoft_login_configured {
+        return Err(InitOutlookLinkError::NotConfigured);
+    }
     let microsoft_idp_id = ctx
         .auth_client
         .get_identity_provider_id_by_name(MICROSOFT_IDENTITY_PROVIDER_NAME)

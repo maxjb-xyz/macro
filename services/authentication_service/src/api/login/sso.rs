@@ -129,6 +129,20 @@ pub async fn handler(
             .into_response());
     }
 
+    // Graceful degradation: refuse to start an SSO flow for a provider that
+    // isn't configured on this deployment (self-host ships dummy/blank creds).
+    if let Some(name) = idp_name.as_deref() {
+        let configured = match name.to_ascii_lowercase().as_str() {
+            "google" | "google_gmail" => ctx.google_login_configured,
+            "github" => ctx.github_login_configured,
+            "microsoft" | "outlook" => ctx.microsoft_login_configured,
+            _ => true,
+        };
+        if !configured {
+            return Err(crate::api::oauth2::integration_not_configured(name));
+        }
+    }
+
     let idp_id = if let Some(idp_id) = idp_id {
         if idp_id.is_empty() {
             tracing::error!("idp_id is empty");

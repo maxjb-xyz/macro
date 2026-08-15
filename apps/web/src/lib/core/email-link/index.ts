@@ -10,6 +10,7 @@ import type { ConsentScopes } from '@service-auth/client';
 import {
   ALREADY_INITIALIZED_CODE,
   emailClient,
+  GMAIL_NOT_CONFIGURED_CODE,
   NO_GMAIL_GRANT_CODE,
   SHARED_INBOX_CONFLICT_CODE,
 } from '@service-email/client';
@@ -102,7 +103,9 @@ function initEmailLink(args?: {
         return err<void, EmailInitError>({ tag: 'NoGmailGrant' });
       }
       const error: EmailInitError = initResult.error.some(
-        (e) => e.code === ALREADY_INITIALIZED_CODE
+        (e) =>
+          e.code === ALREADY_INITIALIZED_CODE ||
+          e.code === GMAIL_NOT_CONFIGURED_CODE
       )
         ? { tag: 'AlreadyInitialized' }
         : { tag: 'FailedToInitialize', message: 'Failed to initialize' };

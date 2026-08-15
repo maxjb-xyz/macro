@@ -62,6 +62,12 @@ pub struct Config {
     #[macro_config_default(false)]
     pub calendar_sync_enabled: bool,
 
+    /// Master switch for Gmail inbox sync. When `false` the `/email/init`
+    /// endpoint returns a clean "not configured" instead of attempting Gmail
+    /// provider calls (graceful degradation when Google OAuth isn't set up).
+    #[macro_config_default(true)]
+    pub gmail_sync_enabled: bool,
+
     /// Apollo.io API key for CRM enrichment. Locally this is the key
     /// itself; in deployed envs it's the name of the Secrets Manager
     /// secret holding it (resolved at startup). Empty disables enrichment.

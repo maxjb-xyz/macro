@@ -72,6 +72,9 @@ pub enum InitGmailLinkError {
     /// The identity provider was not found
     #[error("identity provider not found")]
     IdentityProviderNotFound,
+    /// The Gmail integration is not configured for this deployment.
+    #[error("Gmail is not configured")]
+    NotConfigured,
 }
 
 impl IntoResponse for InitGmailLinkError {
@@ -80,6 +83,7 @@ impl IntoResponse for InitGmailLinkError {
         let status_code: StatusCode = match &self {
             InitGmailLinkError::TooManyInProgressLinks => StatusCode::TOO_MANY_REQUESTS,
             InitGmailLinkError::PaymentRequired => StatusCode::PAYMENT_REQUIRED,
+            InitGmailLinkError::NotConfigured => StatusCode::NOT_FOUND,
             InitGmailLinkError::InternalError(_) | InitGmailLinkError::IdentityProviderNotFound => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
@@ -129,6 +133,9 @@ pub async fn init_gmail_link_handler(
     ip_context: ClientIp,
     db_permissions: DbPermissionsExtractor,
 ) -> Result<Json<InitGmailLinkResponse>, InitGmailLinkError> {
+    if !ctx.google_login_configured {
+        return Err(InitGmailLinkError::NotConfigured);
+    }
     let Query(InitGmailLinkQueryParams {
         original_url,
         scopes,

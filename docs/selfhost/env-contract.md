@@ -114,6 +114,19 @@ committing real secrets.
    real internal secrets, real SMTP or a disabled-email policy, durable object
    storage, provisioned queues/tables, and a tested backup/restore plan.
 
+## Graceful-degradation flags
+
+Unconfigured integrations fail closed instead of 500-ing:
+
+- `GOOGLE_LOGIN_ENABLED`, `GITHUB_LOGIN_ENABLED`, `STRIPE_BILLING_ENABLED` —
+  default `true`; an integration is active only when its flag is true *and* its
+  credentials are real (non-blank, not a `local-*`/`CHANGEME_*` placeholder).
+- `GMAIL_SYNC_ENABLED` — default `true` in code, `false` in generated self-host
+  `.env`; when `false`, `/email/init` returns `GMAIL_NOT_CONFIGURED` (400)
+  instead of failing on Gmail provider calls.
+- `GET /auth/capabilities` reports `{google_login, github_login, microsoft_login,
+  stripe_billing}`; the web UI hides the matching connect cards when disabled.
+
 ## Source inventory
 
 This contract was derived from:

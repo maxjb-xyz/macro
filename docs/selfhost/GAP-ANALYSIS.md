@@ -39,9 +39,13 @@ Decided against immediate implementation; revisit after the infra fixes land.
    (first signup → owner/workspace-admin). Phase 2 (product work): first-run setup
    screen (workspace name, admin, SMTP/storage/AI keys). Needs mapping to Macro's
    actual team/workspace roles first.
-3. **Integration vars + graceful degradation.** Add `*_ENABLED` flags and make each
-   integration return "not configured" (and hide its UI) instead of a 500 — email
-   currently returns `"Email provider operation failed"` on every boot.
+3. **Integration vars + graceful degradation** — ✅ done. Unconfigured
+   integrations now degrade cleanly instead of 500-ing: `*_ENABLED` flags plus
+   blank/`local-*`-dummy credential detection gate each provider, a new
+   `/capabilities` endpoint reports the enabled set, the web UI hides disabled
+   connect cards, and the auth/email endpoints return "not configured"
+   (404/400 with a machine-readable code) rather than
+   `"Email provider operation failed"`.
 
 ## 🔴 Blocking for real production use
 
@@ -96,8 +100,12 @@ sentinel. `seed_cli` is in the `services_bundle` build, and the bootstrap skips
 sqlx migrations when the `_macro.migrations` ledger is present (avoids colliding
 with migrate-macrodb.sh). Verified end-to-end.
 
-### 8. External integrations (stubbed or disabled)
-These need operator-owned accounts/credentials + public HTTPS callbacks:
+### 8. External integrations (graceful degradation implemented)
+These need operator-owned accounts/credentials + public HTTPS callbacks. Until
+configured they now degrade cleanly (see item 3 above): SSO/link endpoints
+return `INTEGRATION_NOT_CONFIGURED` (404), `/email/init` returns
+`GMAIL_NOT_CONFIGURED` (400), and `/capabilities` drives UI hiding. Real
+activation still requires the operator to supply credentials:
 
 - Google/Gmail login + mail sync
 - GitHub login + PR sync (GitHub App)

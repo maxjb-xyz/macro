@@ -16,6 +16,7 @@ pub(crate) mod context;
 
 // Routes
 #[allow(unused_imports)]
+mod capabilities;
 mod email;
 mod link;
 #[allow(unused_imports)]
@@ -85,6 +86,7 @@ fn api_router(state: ApiContext) -> Router<ApiContext> {
         .nest("/internal", internal::router())
         .nest("/permissions", permissions::router())
         .nest("/login", login::router(state.clone()))
+        .nest("/capabilities", capabilities::router())
         .nest("/logout", logout::router())
         .nest("/oauth", oauth::router(state.clone()))
         .nest("/oauth2", oauth2::router())

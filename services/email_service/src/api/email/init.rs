@@ -39,6 +39,9 @@ pub enum InitError {
     #[error("No Gmail grant available to provision from")]
     NoGmailGrant,
 
+    #[error("Gmail is not configured for this deployment")]
+    GmailNotConfigured,
+
     #[error("Failed to enqueue backfill message")]
     EnqueueError,
 
@@ -68,6 +71,9 @@ pub const ALREADY_INITIALIZED_CODE: &str = "ALREADY_INITIALIZED";
 /// Stable machine-readable code for [`InitError::NoGmailGrant`].
 pub const NO_GMAIL_GRANT_CODE: &str = "NO_GMAIL_GRANT";
 
+/// Stable machine-readable code for [`InitError::GmailNotConfigured`].
+pub const GMAIL_NOT_CONFIGURED_CODE: &str = "GMAIL_NOT_CONFIGURED";
+
 /// Structured 400 body carrying a machine-readable code. Clients branch on
 /// `code` instead of parsing the human message.
 #[derive(Debug, serde::Serialize, serde::Deserialize, ToSchema)]
@@ -83,6 +89,7 @@ impl InitError {
         match self {
             InitError::AlreadyInitialized
             | InitError::NoGmailGrant
+            | InitError::GmailNotConfigured
             | InitError::BadRequest(_)
             | InitError::Parse(_) => StatusCode::BAD_REQUEST,
             InitError::ProviderError(EmailApiError::RateLimited { .. }) => {
@@ -127,6 +134,14 @@ impl IntoResponse for InitError {
                 Json(InitErrorCodeResponse {
                     code: NO_GMAIL_GRANT_CODE.to_string(),
                     message: InitError::NoGmailGrant.to_string(),
+                }),
+            )
+                .into_response(),
+            InitError::GmailNotConfigured => (
+                status_code,
+                Json(InitErrorCodeResponse {
+                    code: GMAIL_NOT_CONFIGURED_CODE.to_string(),
+                    message: InitError::GmailNotConfigured.to_string(),
                 }),
             )
                 .into_response(),
@@ -254,6 +269,12 @@ async fn init_user(
     let user_context = authorization.authorization.user.user_context.clone();
     let mut completed_google_grant: Option<Vec<String>> = None;
     tracing::info!(user_id = %user_context.user_id, ?link_id, "Init called");
+
+    // Graceful degradation: when Gmail sync is disabled (e.g. self-host without
+    // Google OAuth), return a clean non-500 instead of failing on provider calls.
+    if !ctx.config.gmail_sync_enabled {
+        return Err(InitError::GmailNotConfigured);
+    }
 
     let pg_repo = EmailPgRepo::new(ctx.db.clone());
 

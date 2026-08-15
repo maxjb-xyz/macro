@@ -116,10 +116,18 @@ export const ALREADY_INITIALIZED_CODE = 'ALREADY_INITIALIZED' as const;
  */
 export const NO_GMAIL_GRANT_CODE = 'NO_GMAIL_GRANT' as const;
 
+/**
+ * Error code `init` returns (HTTP 400) when Gmail sync is disabled for this
+ * deployment (e.g. self-host without Google OAuth). Clients treat it as a
+ * silent no-op — there is no inbox to provision.
+ */
+export const GMAIL_NOT_CONFIGURED_CODE = 'GMAIL_NOT_CONFIGURED' as const;
+
 type InitErrorCode =
   | typeof SHARED_INBOX_CONFLICT_CODE
   | typeof ALREADY_INITIALIZED_CODE
-  | typeof NO_GMAIL_GRANT_CODE;
+  | typeof NO_GMAIL_GRANT_CODE
+  | typeof GMAIL_NOT_CONFIGURED_CODE;
 
 /**
  * Error code `patchSettings` returns (HTTP 422) when a signature has images that

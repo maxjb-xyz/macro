@@ -103,6 +103,13 @@ if missing:
     print(f"error: .env.example is missing keys that need secret values: {sorted(missing)}", file=sys.stderr)
     sys.exit(1)
 
+# Self-host integration defaults: Gmail sync requires a real Google OAuth app,
+# which an operator supplies later. Off by default so /email/init degrades
+# cleanly (returns "not configured") instead of failing on Gmail provider calls.
+written.append("")
+written.append("# --- self-host integration defaults (graceful degradation) ---")
+written.append("GMAIL_SYNC_ENABLED=false")
+
 out.write_text("\n".join(written) + "\n")
 print(f"wrote {out} ({len(seen)} secrets generated)")
 print("keep it secret — .env is gitignored and must never be committed.")

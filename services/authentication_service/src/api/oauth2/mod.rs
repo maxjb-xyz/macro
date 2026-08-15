@@ -28,6 +28,20 @@ pub(in crate::api) fn format_redirect_uri(provider: &str) -> String {
     format!("{}/oauth2/{provider}/callback", *BASE_URL)
 }
 
+/// Clean, non-500 response for an integration that isn't configured in this
+/// deployment. Carries a machine-readable `INTEGRATION_NOT_CONFIGURED` code so
+/// clients can hide the feature instead of surfacing a generic failure.
+pub(in crate::api) fn integration_not_configured(provider: &str) -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({
+            "code": "INTEGRATION_NOT_CONFIGURED",
+            "message": format!("{provider} is not configured"),
+        })),
+    )
+        .into_response()
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub(in crate::api) struct OAuthState {
     /// The identity provider id to use to complete the login
@@ -124,6 +138,16 @@ pub(in crate::api) async fn handler(
                 .into_response());
         }
     };
+
+    let provider_configured = match provider.as_str() {
+        "google" => ctx.google_login_configured,
+        "github" => ctx.github_login_configured,
+        "microsoft" => ctx.microsoft_login_configured,
+        _ => true,
+    };
+    if !provider_configured {
+        return Err(integration_not_configured(&provider));
+    }
 
     match provider.as_str() {
         "google" => google::handler(&ctx, cookies, &code, &state).await,

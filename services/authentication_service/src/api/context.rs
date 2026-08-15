@@ -140,6 +140,18 @@ pub(crate) struct ApiContext {
     pub stripe_price_id: String,
     /// Whether Gmail link consent requests the Google Calendar scope.
     pub calendar_scope_enabled: bool,
+    /// Whether Google OAuth login/linking is configured for this deployment.
+    #[from_ref(skip)]
+    pub google_login_configured: bool,
+    /// Whether GitHub OAuth login/linking is configured for this deployment.
+    #[from_ref(skip)]
+    pub github_login_configured: bool,
+    /// Whether Microsoft/Outlook OAuth is configured for this deployment.
+    #[from_ref(skip)]
+    pub microsoft_login_configured: bool,
+    /// Whether Stripe billing is configured for this deployment.
+    #[from_ref(skip)]
+    pub stripe_configured: bool,
 }
 
 env_var! {

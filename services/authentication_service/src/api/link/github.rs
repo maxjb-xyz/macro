@@ -50,6 +50,9 @@ pub enum InitGithubLinkError {
     /// The identity provider was not found
     #[error("identity provider not found")]
     IdentityProviderNotFound,
+    /// The GitHub integration is not configured for this deployment.
+    #[error("GitHub is not configured")]
+    NotConfigured,
 }
 
 impl IntoResponse for InitGithubLinkError {
@@ -58,6 +61,7 @@ impl IntoResponse for InitGithubLinkError {
         let status_code: StatusCode = match &self {
             InitGithubLinkError::InvalidUserId(_) => StatusCode::BAD_REQUEST,
             InitGithubLinkError::TooManyInProgressLinks => StatusCode::TOO_MANY_REQUESTS,
+            InitGithubLinkError::NotConfigured => StatusCode::NOT_FOUND,
             InitGithubLinkError::InternalError(_)
             | InitGithubLinkError::GithubServiceError(_)
             | InitGithubLinkError::IdentityProviderNotFound => StatusCode::INTERNAL_SERVER_ERROR,
@@ -163,6 +167,9 @@ pub async fn init_github_link_handler(
     ip_context: ClientIp,
     authorization: MacroAuthorizationExtractor<AuthorizationService, UserOrInternal>,
 ) -> Result<Json<InitGithubLinkResponse>, InitGithubLinkError> {
+    if !ctx.github_login_configured {
+        return Err(InitGithubLinkError::NotConfigured);
+    }
     let Query(InitGithubLinkQueryParams { original_url }) = query;
     // TODO: this should probably be a middleware or extractor
     // Check count of in-progress links

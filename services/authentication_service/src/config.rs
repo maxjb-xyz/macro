@@ -132,6 +132,17 @@ pub struct Config {
     /// calendar feature isn't using yet.
     #[macro_config_default(false)]
     pub calendar_scope_enabled: bool,
+    /// Whether Google OAuth login/linking is enabled for this deployment.
+    /// Defaults on to preserve upstream behavior; self-host sets it off (or
+    /// leaves blank/dummy credentials) so the integration degrades cleanly.
+    #[macro_config_default(true)]
+    pub google_login_enabled: bool,
+    /// Whether GitHub OAuth login/linking is enabled for this deployment.
+    #[macro_config_default(true)]
+    pub github_login_enabled: bool,
+    /// Whether Stripe billing is enabled for this deployment.
+    #[macro_config_default(true)]
+    pub stripe_billing_enabled: bool,
 }
 
 /// Complete Microsoft OAuth credentials used to enable Outlook account linking.
@@ -154,6 +165,30 @@ impl Config {
             &self.microsoft_client_secret,
             &self.microsoft_tenant_id,
         )
+    }
+
+    /// True when Google OAuth is enabled *and* has real (non-blank, non-dummy)
+    /// credentials. Self-host's `.env.example` carries `local-*` stubs, so this
+    /// stays false until an operator supplies real values.
+    pub fn google_login_configured(&self) -> bool {
+        self.google_login_enabled
+            && !is_placeholder(self.google_client_id.as_ref())
+            && !is_placeholder(self.google_client_secret_key.as_ref())
+    }
+
+    /// True when GitHub OAuth is enabled *and* has real credentials.
+    pub fn github_login_configured(&self) -> bool {
+        self.github_login_enabled
+            && !is_placeholder(self.github_client_id.as_ref())
+            && !is_placeholder(self.github_client_secret.as_ref())
+            && !is_placeholder(self.github_idp_id.as_ref())
+    }
+
+    /// True when Stripe billing is enabled *and* has real credentials.
+    pub fn stripe_configured(&self) -> bool {
+        self.stripe_billing_enabled
+            && !is_placeholder(self.stripe_secret_key.as_ref())
+            && !is_placeholder(self.stripe_price_id.as_ref())
     }
 }
 
@@ -181,6 +216,14 @@ fn resolve_microsoft_credentials(
 
 fn nonblank_value(value: Option<&str>) -> Option<&str> {
     value.filter(|value| !value.trim().is_empty())
+}
+
+/// Treats blank or obviously-fake values (`local-*` dev stubs, `CHANGEME_*`
+/// placeholders) as "not configured". Keeps self-host's dummy credentials from
+/// making a disabled integration look active.
+fn is_placeholder(value: &str) -> bool {
+    let value = value.trim();
+    value.is_empty() || value.starts_with("local-") || value.starts_with("CHANGEME_")
 }
 
 #[cfg(test)]
