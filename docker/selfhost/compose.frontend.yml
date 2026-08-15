@@ -115,6 +115,26 @@ services:
     networks:
       - auth
 
+  # One-shot: sync operator-dependent FusionAuth config (OAuth redirect URLs +
+  # outbound SMTP) from .env. Kickstart only runs against a fresh DB, so this
+  # PATCHes the application + tenant on every boot — idempotent, and the only
+  # way to change the domain or SMTP provider after first boot without wiping
+  # the FusionAuth volume.
+  fusionauth_sync_config:
+    image: python:3.12-alpine
+    restart: "no"
+    env_file:
+      - path: ${MACRO_ENV_FILE:-.env}
+        required: false
+    volumes:
+      - ./tooling/selfhost/sync_fusionauth_config.py:/sync_fusionauth_config.py:ro
+    command: ["python3", "/sync_fusionauth_config.py"]
+    depends_on:
+      fusionauth:
+        condition: service_healthy
+    networks:
+      - auth
+
 volumes:
   localstack_data:
     name: macro_localstack_data

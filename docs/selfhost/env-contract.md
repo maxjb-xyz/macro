@@ -26,7 +26,7 @@ committing real secrets.
 
 | Keys | Class | Policy |
 | --- | --- | --- |
-| `BASE_URL`, `FUSIONAUTH_PUBLIC_URL`, `FUSIONAUTH_OAUTH_REDIRECT_URI`, `ISSUER`, `SENDER_BASE_ADDRESS` | `public URL` | Must be real public HTTPS hostnames/sender domain before real users. Do not use Compose hostnames or `localhost` in a durable deployment. |
+| `BASE_URL`, `FUSIONAUTH_PUBLIC_URL`, `FUSIONAUTH_OAUTH_REDIRECT_URI`, `ISSUER`, `SENDER_BASE_ADDRESS` | `public URL` | Must be real public HTTPS hostnames/sender domain before real users. Do not use Compose hostnames or `localhost` in a durable deployment. The `fusionauth_sync_config` one-shot service PATCHes `BASE_URL`/`FUSIONAUTH_OAUTH_REDIRECT_URI` (and the SMTP block below) into FusionAuth on every boot, since kickstart only runs on a fresh database. |
 | `AUDIENCE` | `internal secret` | Must match the real FusionAuth application/client ID. |
 
 ### Core data services

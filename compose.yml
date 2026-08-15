@@ -1252,6 +1252,22 @@ services:
         condition: service_healthy
     networks:
     - auth
+  fusionauth_sync_config:
+    image: python:3.12-alpine
+    restart: 'no'
+    env_file:
+    - path: ${MACRO_ENV_FILE:-.env}
+      required: false
+    volumes:
+    - ./tooling/selfhost/sync_fusionauth_config.py:/sync_fusionauth_config.py:ro
+    command:
+    - python3
+    - /sync_fusionauth_config.py
+    depends_on:
+      fusionauth:
+        condition: service_healthy
+    networks:
+    - auth
 networks:
   databases:
     driver: bridge

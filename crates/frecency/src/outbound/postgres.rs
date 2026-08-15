@@ -531,6 +531,13 @@ impl UnprocessedEventsRepo for FrecencyPgProcessor {
         &self,
         aggregates: Vec<AggregateId<'_>>,
     ) -> Result<Vec<AggregateFrecency>, Self::Err> {
+        // Short-circuit an empty request: `push_tuples` with no rows would emit
+        // `... IN ()`, which is invalid SQL and surfaces as a Postgres
+        // "syntax error at or near ')'" every poll cycle.
+        if aggregates.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let mut guard = self.tx.try_lock()?;
         let tx = guard.as_deref_mut().ok_or(PollerErr::TxErr)?;
 
