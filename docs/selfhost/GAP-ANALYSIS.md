@@ -57,9 +57,11 @@ SPF/DKIM/DMARC, wired into FusionAuth (SMTP settings) and the email service.
 LocalStack emulates S3/SQS/DynamoDB in-process and is ephemeral (Community has
 no persistence). For production: real AWS S3/SQS/DynamoDB, or self-hosted
 MinIO + ElasticMQ + DynamoDB-compatible store, with durability and backup.
-Attempted: `docker/selfhost/compose.localstack-persist.yml` (gresau fork) persists
-state to a volume, but S3 bucket restore across recreation was NOT verified
-(`NoSuchBucket` observed) — treat as experimental; real AWS remains the answer.
+Self-hosted durable path: `docker/selfhost/compose.localstack-persist.yml`
+swaps in `gresau/localstack-persist:4` + a named volume — VERIFIED (S3, SQS,
+and DynamoDB state all survive a full container recreation). Caveat: LocalStack
+went closed-source in March 2026, so both the official `:4` and this fork are
+frozen at their last OSS release; pin the tag and plan a real-AWS migration.
 
 ### 4. Backups / restore (verified: logical dumps + volume archives)
 `tooling/selfhost/backup-restore.sh` runs end-to-end. Logical `pg_dumpall`
