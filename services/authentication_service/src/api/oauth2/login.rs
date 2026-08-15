@@ -112,10 +112,11 @@ pub(in crate::api::oauth2) async fn handler(
 
     spawn_first_inbox_provision(ctx, &access_token);
 
-    match environment {
-        Environment::Local => Ok(StatusCode::OK.into_response()), // We don't really care about redirect in local
-        Environment::Production | Environment::Develop => {
-            Ok(Redirect::to(url.as_str()).into_response())
-        }
+    // Self-hosted deployments redirect back to the app like production; only
+    // localhost dev returns 200 (the dev frontend handles the token differently).
+    if matches!(environment, Environment::Local) && !macro_env::is_self_host() {
+        Ok(StatusCode::OK.into_response())
+    } else {
+        Ok(Redirect::to(url.as_str()).into_response())
     }
 }

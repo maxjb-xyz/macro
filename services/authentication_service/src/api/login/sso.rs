@@ -36,6 +36,18 @@ pub(crate) struct LoginQueryParams {
 }
 
 pub(crate) fn is_allowed_original_url(url: &Url) -> bool {
+    // Self-host: the operator's own public origin is always allowed so the
+    // post-login redirect back to the app works (the SaaS allow-list below
+    // only knows macro.com / dev.macro.com).
+    if macro_env::is_self_host() && url.scheme() == "https" {
+        if let Some(host) = url.host_str()
+            && let Ok(base) = Url::parse(&crate::config::BASE_URL)
+            && base.host_str() == Some(host)
+        {
+            return true;
+        }
+    }
+
     match url.scheme() {
         // The app owns the custom scheme and handles all macro URI routes itself.
         "macro" => true,

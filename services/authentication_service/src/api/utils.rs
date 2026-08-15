@@ -48,6 +48,10 @@ pub fn generate_session_code() -> String {
 
 /// Returns the default redirect url based on the environment
 pub fn default_redirect_url() -> Url {
+    // Self-host: land back on the operator's own app origin.
+    if macro_env::is_self_host() {
+        return format!("{}/app", *crate::config::BASE_URL).parse().unwrap();
+    }
     match Environment::new_or_prod() {
         Environment::Local => {
             let port = FrontendPort::new()

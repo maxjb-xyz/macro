@@ -287,6 +287,11 @@ End-to-end confirmation for each provider:
   `oauth2.issuer` discovery URL at creation, so a placeholder tenant fails.
 - **Real SMTP** is separate (FusionAuth `SMTP_*` vars) and required for
   passwordless login to reach real users — see the GAP analysis §2.
+- **Post-login redirects on self-host** (`ENVIRONMENT=selfhost`) land back on
+  the operator's own `BASE_URL` origin: the `original_url` allow-list and the
+  default post-login redirect are config-driven rather than hardcoded to
+  `macro.com`, and the OAuth login callback redirects like production instead
+  of returning a bare 200 (localhost-dev behaviour).
 - The "on" paths above are documented from the code; they are **not** smoke-tested
   end-to-end without real provider credentials. The "off" (graceful-degradation)
   path is verified.

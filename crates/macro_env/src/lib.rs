@@ -100,6 +100,21 @@ impl FromStr for Environment {
     }
 }
 
+/// Whether the deployment is self-hosted (as opposed to localhost dev or the
+/// SaaS develop/production environments). Self-host and localhost dev both
+/// resolve secrets from the env file, so this is how callers tell the two
+/// apart for behaviour that differs between them (redirect targets, cookie
+/// domains, allowed original URLs).
+pub fn is_self_host() -> bool {
+    static SELF_HOST: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *SELF_HOST.get_or_init(|| {
+        matches!(
+            std::env::var("ENVIRONMENT").ok().as_deref().map(str::trim),
+            Some("selfhost" | "self_host")
+        )
+    })
+}
+
 /// Whether self-host deployments should unlock every paywalled feature
 /// (premium features and professional AI models) for every user without a
 /// Stripe subscription.
