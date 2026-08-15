@@ -9,7 +9,7 @@ model from `docs/selfhost/published-release-images.md`.
 - **State** lives in named volumes (Postgres, FusionAuth, LocalStack S3/SQS/DDB,
   Kafka, Redis, OpenSearch) — never in containers.
 - **Code** is immutable per-service images tagged `sha-<full-sha>` (and
-  `:latest` / `v*` from CI), referenced by `compose.published.yml`.
+  `:latest` / `v*` from CI), referenced by `compose.yml`.
 - **Config** is `.env` (and `.env.selfhost` if you split it). Both are
   operator-owned and gitignored.
 
@@ -31,7 +31,7 @@ grep -E '^MACRO_RELEASE_IMAGE_TAG=' .env
 sha256sum .env .env.selfhost 2>/dev/null
 
 # Backup ID you can restore to
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml ps
+docker compose ps
 ```
 
 ## 2. Back up
@@ -67,7 +67,7 @@ waits for healthy services.
 Run `docs/selfhost/smoke-test-spec.md`, or at minimum confirm:
 
 ```bash
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml ps \
+docker compose ps \
   | grep -E 'unhealthy|Exited|Restarting' || echo "all healthy"
 
 curl -fsS http://localhost/ >/dev/null && echo "frontend reachable"
@@ -116,7 +116,7 @@ docker compose up -d --wait
 - Prefer `sha-<full-sha>` tags over `:latest` for reproducible rollbacks; keep
   `:latest` only for staging.
 - If `MACRO_RELEASE_IMAGE_TAG` is changed but a service still shows the old
-  version, confirm `compose.published.yml` overrides that service (JS/worker
-  services may still use dev images until dedicated release images exist).
+  version, confirm `compose.yml` pins that service's image (`docker compose
+  config --images` shows the resolved tag).
 - A migration that can't be safely reversed is the trigger for 5b (full data
   restore), not 5a.

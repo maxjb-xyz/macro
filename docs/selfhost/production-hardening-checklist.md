@@ -10,12 +10,7 @@ change that must exist before exposing real users.
 Generated with:
 
 ```bash
-env MACRO_ENV_FILE=$PWD/.env.selfhost.example \
-  docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
-  --env-file .env.selfhost.example \
-  config --format json
+docker compose config --format json
 ```
 
 Observed baseline:
@@ -44,7 +39,7 @@ Observed baseline:
 | Log retention | Container logs rotate locally and important logs are exported off-host before rotation. | `docker/selfhost/compose.production.yml` sets `json-file` + `max-size:10m`/`max-file:3` on all long-running services. Off-host export is operator-defined. | Add the operator's centralized log driver or export pipeline; state a retention/redaction policy. | `docker inspect` shows log rotation on each service; log volume cannot fill disk during a soak run; off-host logs contain startup, health, auth, worker, and error events. |
 | Disabled integrations | Features backed only by stubs, local emulators, or missing provider approvals are explicitly disabled or fail closed; boot success is not treated as feature readiness. | Env surface is preserved by `.env.selfhost.example`; `docs/SELF_HOSTING_INTEGRATIONS.md` identifies local-emulated, external-required, and stubbed areas. | Keep env keys visible, leave credentials blank where boot permits, and set obvious `CHANGEME_DISABLED_BY_POLICY_*` placeholders only when config loading requires non-empty values. Add product-level disable switches or routing policy before exposing unsupported Google/Gmail, GitHub, Stripe, push, LiveKit, model-provider, calendar, analytics, or Apollo features. Replace LocalStack/Mailpit with real providers or keep those flows smoke-only. | Smoke tests prove disabled features are not advertised or fail closed; configured providers have callback/webhook URLs on the public HTTPS host. |
 | Durable storage and backup | Postgres, FusionAuth, object storage, Kafka, Redis, and OpenSearch have an off-host backup/restore path and no routine command deletes volumes. | Current persistence plan and `tooling/selfhost/backup-restore.sh` cover named volumes; LocalStack object data is explicitly non-durable. | Keep named volumes in Compose, never use `down -v`, configure production S3-compatible object storage outside LocalStack, and wire `tooling/selfhost/backup-restore.sh` or operator-specific backup jobs to encrypted off-host storage. Add a future LocalStack durable profile only if it has an explicit data volume and restore path. | Backup dry-run/inventory succeeds; restore drill on a separate host satisfies `docs/selfhost/persistence-backup-restore.md`. |
-| Immutable images | Runtime containers use pinned release images, not host-built dev bundles or bind-mounted binaries. Rollback is changing image tags, not editing host artifacts. | `docker/selfhost/compose.published.yml` replaces host-built dev images with per-service `ghcr.io` release images for all services (13 Rust services + proxy + 5 JS/worker services). | Keep `compose.published.yml` in sync with CI's image list. Pin by SHA; document specialized-image exceptions. | Rendered config for production overlay has no dev `build:` stanzas for released services; image tags are immutable SHAs; rollback test starts previous tag set. |
+| Immutable images | Runtime containers use pinned release images, not host-built dev bundles or bind-mounted binaries. Rollback is changing image tags, not editing host artifacts. | `compose.yml` pins every service to its per-service `ghcr.io` release image for all services (13 Rust services + proxy + 5 JS/worker services). | Keep `compose.yml`'s inline image list in sync with CI's image list. Pin by SHA; document specialized-image exceptions. | Rendered config for production overlay has no dev `build:` stanzas for released services; image tags are immutable SHAs; rollback test starts previous tag set. |
 | Update and rollback path | Operators can take a backup, apply new Compose/env/image versions, run smoke checks, and roll back to the previous known-good tag/env/backup. | `docs/selfhost/update-rollback.md` records the full procedure: record state → backup → new image tag → `up -d --wait` → smoke → rollback (tag-only, or env + database restore when migrations aren't reversible). | Keep the runbook current with the compose overlay chain and practice the drill on a non-production host. | Practice upgrade and rollback on a non-production host; record RPO/RTO, backup ID, image tag set, and smoke results. |
 | Observability and alerts | Operators can see health, crash loops, disk pressure, backup failures, queue lag, and auth/email failures before users report them. | Jaeger/Datadog profiles exist for local/dev tracing, but production alerting is operator-defined. | Decide whether to keep OTLP/Datadog, add another collector, or use host/container monitoring. Add Compose env/labels for telemetry only after API keys and privacy policy are defined. Alert on unhealthy containers, restart loops, disk usage, backup age, TLS expiry, and failed provider callbacks. | Alert test fires for a stopped service, expired cert test path, and stale backup marker; telemetry does not require dummy production secrets. |
 
@@ -53,8 +48,8 @@ Observed baseline:
 Implemented (see `docker/selfhost/`):
 
 - `compose.frontend.yml` — Caddy proxy + durable LocalStack + IdP provisioner.
-- `compose.published.yml` — immutable per-service release images (13 Rust
-  services + proxy).
+- Release-image overrides — inline in `compose.yml` (13 Rust services + proxy +
+  5 JS/worker services).
 - `compose.production.yml` — `restart: unless-stopped` + log rotation +
   conservative `deploy.resources.limits` for all long-running services.
 - `update-rollback.md` — the update/rollback runbook.

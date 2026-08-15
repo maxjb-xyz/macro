@@ -1,7 +1,7 @@
-# Production hardening overlay — apply last, on top of the frontend/published
-# overlays. Adds the lifecycle and resource policies that turn the single-host
-# appliance from "boots" into "production-ish": restart-on-crash, log rotation,
-# and conservative CPU/memory ceilings for every long-running service.
+# Production hardening overlay — adds restart-on-crash, log rotation, and
+# conservative CPU/memory ceilings for every long-running service. Merged
+# automatically by compose.yml (no -f flags); the operator just runs
+# `docker compose up -d`.
 #
 # One-shot bootstrap jobs (postgres_bootstrap, kafka_topics,
 # fusionauth_provision_idps) are intentionally NOT given a restart policy — they
@@ -11,14 +11,6 @@
 # Resource limits are CONSERVATIVE DEFAULT CEILINGS, not reservations: they cap
 # runaway processes but sit well above idle/steady-state usage. Tune them for
 # your dataset size and concurrency (see docs/selfhost/production-hardening-checklist.md).
-#
-# Usage:
-#   docker compose --project-directory . \
-#     -f compose.yml \
-#     -f docker/selfhost/compose.frontend.yml \
-#     -f docker/selfhost/compose.published.yml \
-#     -f docker/selfhost/compose.production.yml \
-#     --env-file .env up -d
 
 x-logging: &default-logging
   driver: json-file

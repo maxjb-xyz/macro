@@ -50,7 +50,7 @@ Then:
 docker compose up -d --wait
 ```
 
-`compose.published.yml` overrides each service with:
+`compose.yml` pins each Macro service to its release image with:
 
 - `image:` → your registry/tag.
 - `build: !reset null`, `command: !reset null` → never rebuild locally; use the
@@ -61,12 +61,7 @@ docker compose up -d --wait
 Validate before booting:
 
 ```bash
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.published.yml \
-  -f docker/selfhost/compose.production.yml \
-  --env-file .env config --images
+docker compose config --images
 ```
 
 ## Upgrade / rollback
@@ -81,8 +76,8 @@ previous env + database backup if a migration can't be reversed).
 - **`manifest unknown`** — the tag wasn't pushed. Re-run the build with `--push`.
 - **`unauthorized`** — `docker login ghcr.io` on the operator host with a
   `read:packages` token (private images).
-- **A service still builds locally** — overlay order is wrong; `compose.published.yml`
-  must come after `compose.frontend.yml`.
+- **A service still builds locally** — its `image:` override is missing from
+  `compose.yml` (or `MACRO_RELEASE_IMAGE_REGISTRY`/`_TAG` aren't set in `.env`).
 - **Wrong architecture** — CI builds `linux/amd64`; for arm64 operators, build
   with `--platform linux/arm64` (buildx) and push to your own registry.
 

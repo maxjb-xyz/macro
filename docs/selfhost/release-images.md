@@ -1,7 +1,7 @@
 # Release image strategy
 
-> Status: adopted and implemented — the per-service baked-image approach is in
-> `docker/selfhost/compose.published.yml`; the operator workflow is
+> Status: adopted and implemented — the per-service baked-image approach is
+> wired into `compose.yml` (inline image overrides); the operator workflow is
 > `docs/selfhost/published-release-images.md`. This file is the decision record.
 
 This note records the first self-host release-image decision for the Macro Compose stack. The goal is to remove the current dependency on host-built, bind-mounted Rust development binaries for operator-facing self-host runs while keeping the self-host layer additive and easy to rebase.
@@ -100,13 +100,7 @@ The overlay intentionally inherits each service's env_file, healthcheck, depends
 Render check:
 
 ```bash
-env MACRO_ENV_FILE=$PWD/.env.example \
-  docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
-  -f docker/selfhost/compose.release-images.example.yml \
-  --env-file .env.example \
-  config authentication-service static_file_service
+docker compose config --images
 ```
 
 Local prototype image builds:
@@ -140,7 +134,7 @@ Implementation order:
 5. Handle exceptions explicitly:
    - `search_processing_service`: use `docker/Dockerfile.search_processing_service.prebuilt` or a dedicated release Dockerfile until pdfium/default-feature handling is proven.
    - `convert_service`: use its dedicated LibreOffice/Collabora image path.
-   - JS/Worker-side services (`sync_service`, `lexical_service`, `ai_editing_worker`, `analytics_proxy`, `websocket_service`) — **done** (see `build-release-images.yml`): each has a build-time Dockerfile (sync via Rust→wasm builder; lexical via a scoped workspace bundle; ai-editing + analytics + websocket via build-time `bun install`), published to GHCR and wired into `compose.published.yml`.
+   - JS/Worker-side services (`sync_service`, `lexical_service`, `ai_editing_worker`, `analytics_proxy`, `websocket_service`) — **done** (see `build-release-images.yml`): each has a build-time Dockerfile (sync via Rust→wasm builder; lexical via a scoped workspace bundle; ai-editing + analytics + websocket via build-time `bun install`), published to GHCR and wired into `compose.yml`.
 6. Once every required service has a published image, convert the example overlay into a documented production overlay and make the production hardening checklist require immutable image tags.
 
 Do not make the preview artifact mount path the default self-host packaging model. It is useful for CI previews, but it preserves the host-bind-mounted binary failure mode this task is meant to eliminate.

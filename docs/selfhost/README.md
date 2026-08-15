@@ -14,10 +14,10 @@ question.
   [`production-hardening-checklist.md`](production-hardening-checklist.md) — the
   gate-by-gate checklist (TLS, restart, resources, logging, backups, images,
   update/rollback, observability). The Compose overlays it maps to are in
-  `docker/selfhost/`:
+  `docker/selfhost/` (both merged into `compose.yml` automatically):
   - `compose.frontend.yml` — Caddy proxy + durable LocalStack + IdP provisioner.
-  - `compose.published.yml` — immutable per-service release images.
   - `compose.production.yml` — restart + log rotation + resource limits.
+  - Release-image overrides live inline in `compose.yml` itself.
 - **What's still not done / where are the gaps?** →
   [`GAP-ANALYSIS.md`](GAP-ANALYSIS.md).
 
@@ -42,18 +42,13 @@ question.
 docker compose up -d --wait
 ```
 
-`generate-secrets.sh` writes a `COMPOSE_FILE` line into `.env`, so that one
-command merges the base graph with the three self-host overlays
-(`compose.frontend.yml`, `compose.published.yml`, `compose.production.yml`).
-The explicit expansion is:
+`compose.yml` is the full production stack: it includes the upstream base,
+`compose.frontend.yml`, and `compose.production.yml`, and pins every Macro
+service to its release image inline — no `COMPOSE_FILE`, no `-f` flags. For
+local/dev build-from-source, run the base file directly:
 
 ```bash
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.published.yml \
-  -f docker/selfhost/compose.production.yml \
-  --env-file .env up -d --wait
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 The older `docs/SELF_HOSTING_*.md` files and `docker/docker-compose.self-host.yml`

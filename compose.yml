@@ -1,9 +1,142 @@
-# Auto-loaded by `docker compose` (no -f flags). Points at the upstream base
-# service graph. The self-host overlays are listed in COMPOSE_FILE (see
-# .env.example), so a bare `docker compose up -d` runs the full self-host stack.
+# ============================================================================
+# Macro self-host — production stack.
 #
-# For local/dev iteration only, run the base file directly:
-#   docker compose -f docker/docker-compose.yml up -d
+# `docker compose up -d --wait` boots the full production deployment: upstream
+# base services + the self-host frontend proxy/storage + production hardening,
+# with every Macro service pinned to an immutable GHCR release image. No
+# COMPOSE_FILE or `-f` flags required.
+#
+# Rebase note: upstream's docker/docker-compose.yml is included untouched.
+# Self-host additions live here (the per-service release `image:` overrides)
+# and in docker/selfhost/compose.frontend.yml + compose.production.yml
+# (additive proxy/storage + hardening).
+# ============================================================================
+
 include:
+  # `project_directory: .` makes the included file's own `include:` paths resolve
+  # relative to the repo root (the base file includes docker/docker-compose-databases.yml
+  # and infra/stacks/... relative to `.`, not to docker/).
   - path: docker/docker-compose.yml
     project_directory: .
+  - path: docker/selfhost/compose.frontend.yml
+    project_directory: .
+  - path: docker/selfhost/compose.production.yml
+    project_directory: .
+
+# Per-service release images. `include:` merges scalar fields first-wins, so it
+# cannot replace `build:` with `image:` the way `-f` does — these overrides must
+# live inline here. Requires MACRO_RELEASE_IMAGE_REGISTRY + MACRO_RELEASE_IMAGE_TAG
+# in the operator's .env.
+services:
+  authentication-service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY:?set MACRO_RELEASE_IMAGE_REGISTRY}/authentication-service:${MACRO_RELEASE_IMAGE_TAG:?set MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  connection_gateway:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/connection-gateway:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  contacts_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/contacts-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  document_cognition_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-cognition-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  document_storage_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-storage-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  document_upload_finalizer:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-upload-finalizer:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+    # Published images rename the binary to /app/svc and run it as `./svc`, so
+    # the base compose's liveness probe (which greps for the dev binary name
+    # `document_upload_finalizer_local_worker`) must be overridden to match.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'sv[c]' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  email_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/email-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  email_pubsub_workers:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/email-pubsub-workers:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+    # Same as document_upload_finalizer: base probe greps for dev name
+    # `pubsub_workers`; published binary runs as `./svc`.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'sv[c]' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  notification_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/notification-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  static_file_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/static-file-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  unfurl_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/unfurl-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  image_proxy_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/image-proxy-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  search_processing_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/search-processing-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    command: !reset null
+
+  proxy:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/proxy:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+
+  # --- JS/worker services (own Dockerfiles; bundled/installed at build time) ---
+  sync_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/sync-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    volumes: !reset []
+
+  lexical_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/lexical-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    # The release image bundles at build time; drop the dev-time
+    # `bun build ... && bun server.bundle.js` command.
+    command: !reset null
+
+  ai_editing_worker:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/ai-editing-worker:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    volumes: !reset []
+
+  analytics_proxy:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/analytics-proxy:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    volumes: !reset []
+
+  websocket_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/websocket-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null

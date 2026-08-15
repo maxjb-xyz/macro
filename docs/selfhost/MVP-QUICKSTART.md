@@ -32,9 +32,9 @@ deploy from it directly.
 docker compose up -d --wait
 ```
 
-That's it — no `-f` flags. `generate-secrets.sh` wrote a `COMPOSE_FILE` line
-into `.env`, so Compose merges the base graph with the self-host overlays
-(proxy/storage, release images, hardening) automatically.
+That's it — no `-f` flags. `compose.yml` is the full production stack (base +
+proxy/storage + release images + hardening), so `docker compose` runs it
+directly.
 
 The first run pulls the published per-service release images from GHCR (the
 fork's CI publishes them publicly) — every service, including the five
@@ -132,17 +132,14 @@ welcome document on first boot (idempotent — a sentinel in the `macro_seed_sta
 volume skips later runs):
 
 ```bash
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.seed.yml up seed
+docker compose -f compose.yml -f docker/selfhost/compose.seed.yml up seed
 ```
 
 The seeded admin logs in passwordless at `admin@seed.macro.local` (override with
 `SEED_ADMIN_EMAIL`). Re-run after changing admin details:
 
 ```bash
-docker compose --project-directory . \
-  -f compose.yml -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.seed.yml \
+docker compose -f compose.yml -f docker/selfhost/compose.seed.yml \
   run --rm seed sh -c 'rm -f /seed-state/.bootstrapped && /app/out/seed_cli scenario bootstrap'
 ```
 
