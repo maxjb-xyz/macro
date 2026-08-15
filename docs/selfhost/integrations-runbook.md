@@ -38,8 +38,7 @@ when no integration is configured.
 Re-run it after changing credentials:
 
 ```bash
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml \
-  run --rm fusionauth_provision_idps
+docker compose run --rm fusionauth_provision_idps
 ```
 
 The field-for-field IdP config below is what the provisioner applies (kept here

@@ -1,5 +1,8 @@
 # Self-Hosted Fork Maintenance
 
+> **Superseded** — the compose overlay references here predate the single
+> `compose.yml` production entry point. See [`docs/selfhost/README.md`](selfhost/README.md).
+
 This fork tracks upstream Macro while proving out a self-hosted path around
 Docker Compose first. Treat this as a compatibility fork, not a product fork:
 keep upstream application code intact whenever possible, isolate self-hosting

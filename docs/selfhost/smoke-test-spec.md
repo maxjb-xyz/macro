@@ -42,8 +42,6 @@ Render the target Compose model:
 
 ```bash
 docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
   --env-file "$MACRO_COMPOSE_ENV" \
   config >/tmp/macro-selfhost-smoke.compose.yml
 ```
@@ -61,14 +59,10 @@ Start the stack without deleting volumes:
 
 ```bash
 docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
   --env-file "$MACRO_COMPOSE_ENV" \
   up -d --wait --wait-timeout 180
 
 docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
   --env-file "$MACRO_COMPOSE_ENV" \
   ps
 ```
@@ -165,15 +159,11 @@ Do not destroy volumes. Restart/recreate containers only:
 
 ```bash
 docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
   --env-file "$MACRO_COMPOSE_ENV" \
   restart
 
 # If the update path needs container recreation, use up -d again, not down -v.
 docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
   --env-file "$MACRO_COMPOSE_ENV" \
   up -d --wait --wait-timeout 180
 ```

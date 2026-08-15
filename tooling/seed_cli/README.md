@@ -72,9 +72,7 @@ and applies the bundled `seed/scenarios/bootstrap.json` scenario (admin user +
 team workspace + document + channel).
 
 ```bash
-docker compose -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.seed.yml up -d
+docker compose -f compose.yml -f docker/selfhost/compose.seed.yml up -d
 ```
 
 The command is gated by `SEED_BOOTSTRAP=true` and, unlike the local scenario

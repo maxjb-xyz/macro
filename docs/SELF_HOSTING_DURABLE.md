@@ -1,5 +1,8 @@
 # Durable Docker Compose operator contract
 
+> **Superseded** — the compose commands here predate the single `compose.yml`
+> production entry point. See [`docs/selfhost/README.md`](selfhost/README.md).
+
 This is the smallest operator layer on top of the upstream local Compose
 stack. It is for a single Docker host and keeps the application service graph
 unchanged. It does not turn the local development images, secrets, or local

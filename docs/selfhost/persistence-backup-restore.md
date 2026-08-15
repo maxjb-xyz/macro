@@ -7,11 +7,7 @@ Status: first operator contract for the single-node Docker Compose appliance. It
 This plan covers the Compose topology rendered by:
 
 ```bash
-env MACRO_ENV_FILE=$PWD/.env.example \
-  docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  --env-file .env.example config --volumes
+docker compose config --volumes
 ```
 
 Current rendered named volumes:
@@ -57,10 +53,7 @@ Use both logical exports and volume archives:
 1. Confirm the stack resolves and record versions:
 
 ```bash
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  config --volumes
+docker compose config --volumes
 ```
 
 2. Enter maintenance mode at the edge, or otherwise stop user traffic.

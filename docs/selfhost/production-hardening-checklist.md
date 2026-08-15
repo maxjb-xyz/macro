@@ -15,10 +15,10 @@ docker compose config --format json
 
 Observed baseline:
 
-- 29 services render.
-- 8 services currently have `restart:` in `docker/docker-compose.self-host.yml`:
-  `postgres`, `redis`, `kafka`, `search`, FusionAuth `db`, `fusionauth`,
-  `localstack`, and `mailpit`.
+- 31 services render.
+- `restart: unless-stopped` is applied to all 28 long-running services via
+  `compose.production.yml` (included by `compose.yml`); the one-shot bootstrap
+  jobs are intentionally not restarted.
 - 2 services render without a Compose healthcheck, both intentional one-shot
   bootstrap jobs gated by `service_completed_successfully`: `postgres_bootstrap`
   and `kafka_topics`. Every long-running service now has a healthcheck (HTTP

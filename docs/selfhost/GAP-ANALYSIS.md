@@ -9,7 +9,7 @@ item needs.
 One command boots the full product:
 
 ```bash
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d --wait
+docker compose up -d --wait
 ```
 
 - 28 services + Caddy proxy, all healthy (`--wait` exits 0).
