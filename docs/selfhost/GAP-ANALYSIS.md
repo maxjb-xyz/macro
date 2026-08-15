@@ -58,9 +58,12 @@ LocalStack emulates S3/SQS/DynamoDB in-process. For production: real AWS
 S3/SQS/DynamoDB, or self-hosted MinIO + ElasticMQ + DynamoDB-compatible store,
 with durability and backup.
 
-### 4. Backups / restore (untested)
-`tooling/selfhost/backup-restore.sh` exists but has not been run end-to-end
-against Postgres, FusionAuth, OpenSearch, Kafka, and object storage.
+### 4. Backups / restore (verified: logical dumps + volume archives)
+`tooling/selfhost/backup-restore.sh` runs end-to-end. Logical `pg_dumpall`
+exports restore cleanly into fresh clusters (MacroDB: 199 tables / 251 ledger
+rows; FusionAuth: 91 tables), and quiesced volume archives extract correctly
+(PG data at `18/docker/`). Still not covered: LocalStack S3/SQS/DynamoDB
+(ephemeral — see #3), off-host storage, and encryption of the backup artifacts.
 
 ### 5. Upgrade / migration path (implemented, needs a live-data test)
 The `_macro.migrations` ledger applies only NEW migrations on boot (idempotent
@@ -70,14 +73,12 @@ own `_sqlx_migrations`.
 
 ## 🟡 Partial / deferred
 
-### 6. Published release images (CI in place, not yet verified on GHCR)
-`tooling/selfhost/build-release-images.sh` + `compose.published.yml` now cover
-all 13 Rust services + the frontend proxy, and `.github/workflows/build-release-images.yml`
-builds/pushes them to GHCR on every push to `main`. Not yet verified end-to-end
-against the registry; the JS/worker services (sync, lexical, ai-editing-worker,
+### 6. Published release images (verified on GHCR)
+All 14 images (13 Rust services + proxy) are public on GHCR, tagged
+`sha-<full-sha>` + `:latest`, and boot green end-to-end (pull + boot + full
+functional smoke test). The JS/worker services (sync, lexical, ai-editing-worker,
 analytics-proxy, websocket) are not covered and keep their wrangler-dev images.
-Also: the generic Rust Dockerfile rebuilds the workspace per service (slow);
-cargo-chef layer caching is the follow-up.
+Follow-up: cargo-chef layer caching to cut rebuild cost.
 
 ### 7. Seed/bootstrap service (incomplete)
 `compose.seed.yml` + `seed_cli scenario bootstrap` are written, but the

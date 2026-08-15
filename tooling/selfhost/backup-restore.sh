@@ -3,10 +3,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="compose.yml"
-SELF_HOST_OVERLAY="docker/docker-compose.self-host.yml"
+# Comma-separated overlay files (repo-root-relative) applied after compose.yml.
+# Defaults to the canonical self-host frontend overlay; the published-image
+# overlay is appended automatically when the env file sets
+# MACRO_RELEASE_IMAGE_REGISTRY.
+SELF_HOST_OVERLAYS="${SELF_HOST_OVERLAYS:-docker/selfhost/compose.frontend.yml}"
 ENV_FILE=".env"
 BACKUP_DIR=""
-PROJECT_NAME="macro"
+PROJECT_NAME="$(basename "$ROOT_DIR")"
 FORCE_DESTRUCTIVE_RESTORE=false
 DRY_RUN=false
 
@@ -95,10 +99,17 @@ resolve_env_file() {
 }
 
 compose() {
+  local -a files=(-f "$ROOT_DIR/$COMPOSE_FILE")
+  local overlay
+  for overlay in ${SELF_HOST_OVERLAYS//,/ }; do
+    [[ -n "$overlay" ]] && files+=(-f "$ROOT_DIR/$overlay")
+  done
+  if grep -qE '^MACRO_RELEASE_IMAGE_REGISTRY=.+' "$ENV_FILE" 2>/dev/null; then
+    files+=(-f "$ROOT_DIR/docker/selfhost/compose.published.yml")
+  fi
   env "MACRO_ENV_FILE=$ENV_FILE" docker compose \
     --project-directory "$ROOT_DIR" \
-    -f "$ROOT_DIR/$COMPOSE_FILE" \
-    -f "$ROOT_DIR/$SELF_HOST_OVERLAY" \
+    "${files[@]}" \
     --env-file "$ENV_FILE" \
     "$@"
 }
@@ -117,7 +128,7 @@ write_manifest() {
     echo "repo_root=$ROOT_DIR"
     git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null | sed 's/^/commit=/' || true
     echo "compose_file=$COMPOSE_FILE"
-    echo "self_host_overlay=$SELF_HOST_OVERLAY"
+    echo "self_host_overlays=$SELF_HOST_OVERLAYS"
     echo "compose_project=$PROJECT_NAME"
     echo "env_file=$ENV_FILE"
     sha256sum "$ENV_FILE" 2>/dev/null | sed 's/^/env_sha256=/' || true
@@ -230,8 +241,10 @@ restore() {
 
   log "Starting stateful services first"
   run compose up -d postgres db redis kafka search fusionauth
+  local hint=""
+  for overlay in ${SELF_HOST_OVERLAYS//,/ }; do hint+=" -f $overlay"; done
   log "Start remaining services after stateful health checks pass:"
-  log "  docker compose --project-directory $ROOT_DIR -f $COMPOSE_FILE -f $SELF_HOST_OVERLAY --env-file $ENV_FILE up -d"
+  log "  docker compose --project-directory $ROOT_DIR -f $COMPOSE_FILE$hint --env-file $ENV_FILE up -d"
 }
 
 main() {
