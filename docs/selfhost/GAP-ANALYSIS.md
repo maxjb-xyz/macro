@@ -22,12 +22,32 @@ docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d --wa
 - **Generated secrets** — `tooling/selfhost/generate-secrets.sh` produces a real
   `.env` with random secrets, and the FusionAuth kickstart reads them via
   `#{ENV.*}` (no hardcoded dev values). `.env` is gitignored.
+- **Incremental migrations** — `_macro.migrations` ledger applies only NEW
+  migrations on boot (idempotent re-runs verified).
+- **TLS-ready** — `SELF_HOST_DOMAIN` parameter: local = HTTP on :80; set a
+  domain = Caddy auto-HTTPS on :443. (Unused until a domain is provisioned.)
+
+## 📝 Noted — self-hosting product changes (parked, not started)
+
+Decided against immediate implementation; revisit after the infra fixes land.
+
+1. **Stop seeding Macro company users.** Two sources: (a) `support_channel_welcome.rs`
+   hardcodes `jacob@/julia@/teo@macro.com` and injects a "Macro Support" channel on
+   every signup; (b) the opt-in `seed_cli` scenario. Fix = config-gate the support
+   channel (or point it at a configurable support email), keep seed opt-in.
+2. **First-user admin onboarding.** Phase 1: `SELF_HOST_FIRST_USER_IS_ADMIN` flag
+   (first signup → owner/workspace-admin). Phase 2 (product work): first-run setup
+   screen (workspace name, admin, SMTP/storage/AI keys). Needs mapping to Macro's
+   actual team/workspace roles first.
+3. **Integration vars + graceful degradation.** Add `*_ENABLED` flags and make each
+   integration return "not configured" (and hide its UI) instead of a 500 — email
+   currently returns `"Email provider operation failed"` on every boot.
 
 ## 🔴 Blocking for real production use
 
 ### 1. TLS / public ingress
-The proxy serves plain HTTP on port 80. Needs Caddy auto-HTTPS (or an external
-TLS terminator) with a real domain, plus correct public URLs/OAuth callbacks.
+Code is ready (`SELF_HOST_DOMAIN` → Caddy auto-HTTPS); needs a real domain +
+port 443 reachable, plus correct public URLs/OAuth callbacks.
 
 ### 2. Real SMTP
 Mailpit is a local mail *catcher* — no delivery. Production needs SMTP/SES with
@@ -42,11 +62,11 @@ with durability and backup.
 `tooling/selfhost/backup-restore.sh` exists but has not been run end-to-end
 against Postgres, FusionAuth, OpenSearch, Kafka, and object storage.
 
-### 5. Upgrade / migration path
-The first-boot migration gate is "0 tables → migrate". On upgrades (existing
-data + new migration files) there is no incremental apply / no
-`_sqlx_migrations` ledger — a future schema change would be skipped silently.
-Needs a real sqlx-migrate runner on boot.
+### 5. Upgrade / migration path (implemented, needs a live-data test)
+The `_macro.migrations` ledger applies only NEW migrations on boot (idempotent
+verified). Remaining: confirm the upgrade path on a data set that predates a
+schema change; the ledger is a filename-based sqlx-compatible table, not sqlx's
+own `_sqlx_migrations`.
 
 ## 🟡 Partial / deferred
 
