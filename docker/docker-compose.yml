@@ -659,8 +659,6 @@ services:
     build:
       context: .
       dockerfile: docker/lexical-service.Dockerfile
-      args:
-        GITHUB_PACKAGES_TOKEN: ${GITHUB_PACKAGES_TOKEN}
     expose:
       - "8096"
     depends_on:

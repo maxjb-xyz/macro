@@ -18,11 +18,11 @@
 #     -f docker/selfhost/compose.published.yml \
 #     --env-file .env up -d
 #
-# This overlay overrides every Rust HTTP service, worker, and the frontend
-# proxy. The JS/worker services (sync_service, lexical_service,
-# ai_editing_worker, analytics_proxy, websocket_service) are NOT covered yet;
-# they keep their existing (wrangler-dev) Dockerfiles until dedicated release
-# images are published.
+# This overlay overrides every service with an immutable per-service release
+# image: the 13 Rust HTTP services + workers, the frontend proxy, and the 5
+# JS/worker services (sync, lexical, ai-editing, analytics-proxy, websocket).
+# Bind-mounts and any dev-time `command` (e.g. lexical-service's runtime
+# bundling) are reset so the image is the sole source of truth.
 
 services:
   authentication-service:
@@ -109,4 +109,31 @@ services:
 
   proxy:
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/proxy:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+
+  # --- JS/worker services (own Dockerfiles; bundled/installed at build time) ---
+  sync_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/sync-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    volumes: !reset []
+
+  lexical_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/lexical-service:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    # The release image bundles at build time; drop the dev-time
+    # `bun build ... && bun server.bundle.js` command.
+    command: !reset null
+
+  ai_editing_worker:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/ai-editing-worker:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    volumes: !reset []
+
+  analytics_proxy:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/analytics-proxy:${MACRO_RELEASE_IMAGE_TAG}
+    build: !reset null
+    volumes: !reset []
+
+  websocket_service:
+    image: ${MACRO_RELEASE_IMAGE_REGISTRY}/websocket-service:${MACRO_RELEASE_IMAGE_TAG}
     build: !reset null

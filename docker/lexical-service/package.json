@@ -1,0 +1,50 @@
+{
+  "name": "@macro-inc/macro",
+  "private": true,
+  "overrides": {
+    "@lexical/clipboard": "0.45.0",
+    "@lexical/code": "0.45.0",
+    "@lexical/code-core": "0.45.0",
+    "@lexical/code-prism": "0.45.0",
+    "@lexical/dragon": "0.45.0",
+    "@lexical/extension": "0.45.0",
+    "@lexical/headless": "0.45.0",
+    "@lexical/history": "0.45.0",
+    "@lexical/html": "0.45.0",
+    "@lexical/internal": "0.45.0",
+    "@lexical/link": "0.45.0",
+    "@lexical/list": "0.45.0",
+    "@lexical/mark": "0.45.0",
+    "@lexical/markdown": "0.45.0",
+    "@lexical/plain-text": "0.45.0",
+    "@lexical/rich-text": "0.45.0",
+    "@lexical/selection": "0.45.0",
+    "@lexical/table": "0.45.0",
+    "@lexical/text": "0.45.0",
+    "@lexical/utils": "0.45.0",
+    "@kobalte/core": "0.13.11",
+    "@solid-primitives/resize-observer": "2.1.5",
+    "@solid-primitives/storage": "4.3.4",
+    "lexical": "0.45.0",
+    "cross-spawn": "7.0.6",
+    "undici": ">=6.24.0",
+    "flatted": ">=3.4.0",
+    "minimatch": ">=3.1.4",
+    "rollup": ">=4.59.0",
+    "ajv": ">=6.14.0"
+  },
+  "dependencies": {
+    "prismjs": "1.30.0",
+    "loro-crdt": "1.13.7"
+  },
+  "workspaces": {
+    "packages": [
+      "packages/lexical-core",
+      "packages/loro-mirror",
+      "services/lexical-service"
+    ],
+    "catalog": {
+      "loro-crdt": "1.13.7"
+    }
+  }
+}

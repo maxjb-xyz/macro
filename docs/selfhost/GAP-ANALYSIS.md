@@ -94,10 +94,9 @@ own `_sqlx_migrations`.
 ## 🟡 Partial / deferred
 
 ### 6. Published release images (verified on GHCR)
-All 14 images (13 Rust services + proxy) are public on GHCR, tagged
-`sha-<full-sha>` + `:latest`, and boot green end-to-end (pull + boot + full
-functional smoke test). The JS/worker services (sync, lexical, ai-editing-worker,
-analytics-proxy, websocket) are not covered and keep their wrangler-dev images.
+All 19 images (13 Rust services + proxy + 5 JS/worker services) are public on
+GHCR, tagged `sha-<full-sha>` + `:latest`, and boot green end-to-end (pull +
+boot + full functional smoke test).
 Follow-up: cargo-chef layer caching to cut rebuild cost.
 
 ### 7. Seed/bootstrap service (done, verified)

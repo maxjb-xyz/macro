@@ -37,10 +37,10 @@ into `.env`, so Compose merges the base graph with the self-host overlays
 (proxy/storage, release images, hardening) automatically.
 
 The first run pulls the published per-service release images from GHCR (the
-fork's CI publishes them publicly) and builds only the five JS/worker services
-(`sync_service`, `lexical_service`, `ai_editing_worker`, `analytics_proxy`,
-`websocket_service`). Expect a few minutes of image pulls on the first boot,
-not a multi-GB Rust build.
+fork's CI publishes them publicly) — every service, including the five
+JS/worker services (`sync_service`, `lexical_service`, `ai_editing_worker`,
+`analytics_proxy`, `websocket_service`). Expect a few minutes of image pulls on
+the first boot, not a multi-GB Rust build.
 
 On first boot the stack self-provisions:
 

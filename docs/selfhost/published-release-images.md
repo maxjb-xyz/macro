@@ -15,10 +15,11 @@ push to `main`, plus `v*` on tagged releases.
 | `authentication-service`, `connection-gateway`, `contacts-service`, `document-cognition-service`, `document-storage-service`, `document-upload-finalizer`, `email-service`, `email-pubsub-workers`, `notification-service`, `static-file-service`, `unfurl-service`, `image-proxy-service` | `docker/Dockerfile` | `SERVICE_NAME=<cargo_bin>` build arg |
 | `search-processing-service` | `docker/Dockerfile.search_processing_service` | pdfium bundled |
 | `proxy` | `docker/selfhost/Dockerfile.proxy` | frontend + Caddy |
-
-Not yet published (still build on the operator host from their own
-Dockerfiles): the JS/worker services — `sync_service`, `lexical_service`,
-`ai_editing_worker`, `analytics_proxy`, `websocket_service`.
+| `sync-service` | `docker/sync-service.Dockerfile` | Rust→wasm builder + wrangler dev |
+| `lexical-service` | `docker/lexical-service.Dockerfile` | scoped workspace build, bundled at build time |
+| `ai-editing-worker` | `docker/ai-editing-worker.Dockerfile` | workspace build, sandbox generated at build |
+| `analytics-proxy` | `docker/analytics-proxy.Dockerfile` | deps installed at build, wrangler dev |
+| `websocket-service` | `docker/websocket-service.Dockerfile` | bun, deps installed at build |
 
 ## Building manually (optional)
 
@@ -49,11 +50,13 @@ Then:
 docker compose up -d --wait
 ```
 
-`compose.published.yml` overrides each covered service with:
+`compose.published.yml` overrides each service with:
 
 - `image:` → your registry/tag.
 - `build: !reset null`, `command: !reset null` → never rebuild locally; use the
-  image's baked-in `dumb-init ./svc` entrypoint.
+  image's baked-in entrypoint (Rust images run `dumb-init ./svc`; JS/worker
+  images run `wrangler dev` or `bun`).
+- `volumes: !reset []` → drop the dev bind-mounts (e.g. `.` → `/app`).
 
 Validate before booting:
 

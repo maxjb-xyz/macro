@@ -10,6 +10,9 @@
 /js
 /rust
 
+# User-facing application (apps/web) is not needed by lexical-service.
+/apps
+
 # Secrets and local configuration
 .env
 .env.*

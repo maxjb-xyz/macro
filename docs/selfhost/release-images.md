@@ -140,7 +140,7 @@ Implementation order:
 5. Handle exceptions explicitly:
    - `search_processing_service`: use `docker/Dockerfile.search_processing_service.prebuilt` or a dedicated release Dockerfile until pdfium/default-feature handling is proven.
    - `convert_service`: use its dedicated LibreOffice/Collabora image path.
-   - JS/Worker-side services (`sync_service`, `lexical_service`, `ai_editing_worker`, `analytics_proxy`, `websocket_service`) should get separate follow-up image work; they are not covered by the Rust-service prototype.
+   - JS/Worker-side services (`sync_service`, `lexical_service`, `ai_editing_worker`, `analytics_proxy`, `websocket_service`) — **done** (see `build-release-images.yml`): each has a build-time Dockerfile (sync via Rust→wasm builder; lexical via a scoped workspace bundle; ai-editing + analytics + websocket via build-time `bun install`), published to GHCR and wired into `compose.published.yml`.
 6. Once every required service has a published image, convert the example overlay into a documented production overlay and make the production hardening checklist require immutable image tags.
 
 Do not make the preview artifact mount path the default self-host packaging model. It is useful for CI previews, but it preserves the host-bind-mounted binary failure mode this task is meant to eliminate.
