@@ -8,13 +8,14 @@ ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 WORKDIR /app
 
-# The worker is a bun workspace member: it imports @macro-inc/* and
-# @loro-mirror/core, which are workspace:* deps (local packages/), NOT published
-# packages. So the whole workspace must be installed at build time, not just
-# this service. docker/ai-editing-worker.Dockerfile.dockerignore re-includes
-# /packages and /apps (same as lexical-service's) for this build context.
+# Install ONLY ai-editing-worker's dependency tree with `--filter`, skipping
+# apps/web and the other services' deps (the old full-workspace install dragged
+# in ~1420 packages / ~3.8 GB). The filter keeps the hoisted layout + workspace
+# symlinks that wrangler needs. All workspace dirs must be present for bun to
+# validate the manifest, so COPY the source tree — docker/ai-editing-worker.Dockerfile.dockerignore
+# trims it to just the workspace dirs (no crates/, docker/, infra/, etc.).
 COPY . .
-RUN bun install --frozen-lockfile
+RUN bun install --filter ai-editing-worker --frozen-lockfile
 
 WORKDIR /app/services/ai-editing-worker
 

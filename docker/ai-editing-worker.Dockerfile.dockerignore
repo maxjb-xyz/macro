@@ -5,10 +5,21 @@
 .claude/.local
 .pi/outputs
 
-# Legacy layout directories may still contain ignored local build artifacts.
-/agents
-/js
-/rust
+# Non-workspace directories the worker never needs. The install uses
+# `--filter ai-editing-worker`, but bun still validates the full workspace
+# manifest, so apps/, packages/ (the 4 workspace packages), and services/ (the
+# 4 workspace services) must remain. Everything else — Rust crates, docker/
+# Dockerfiles, infra, tooling, docs — is trimmed from the context.
+/crates
+/docker
+/infra
+/tooling
+/docs
+/.github
+/nix
+/.cargo
+/scripts
+/packages/sdk
 
 # Secrets and local configuration
 .env
