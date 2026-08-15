@@ -110,15 +110,17 @@ closed-source in March 2026; the image tag is pinned).
   normalized cache degrades to network-only at runtime. Build it with
   `just build-cache-wasm` and place it at
   `apps/web/src/lib/graphql-cache/wasm/` to restore it.
-- The `analytics_proxy` worker has an upstream build error (`hono` unresolved);
-  it is telemetry-only and excluded from the proxy's start gate.
+- The `analytics_proxy` worker is a telemetry-only proxy (PostHog + OTLP).
+  Its container installs its own deps (`hono`, `wrangler`) at startup, so it
+  needs outbound npm access on first boot; it is excluded from the proxy's
+  start gate and its absence never blocks the product.
 - The stack is single-node and single-instance. It is a production-appliance
   prototype, not a horizontally scalable deployment.
 
 ## Teardown
 
 ```bash
-docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml down
+docker compose down
 ```
 
 Do **not** use `down -v` — that deletes all data volumes.
