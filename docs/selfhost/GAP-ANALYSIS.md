@@ -54,9 +54,12 @@ Mailpit is a local mail *catcher* — no delivery. Production needs SMTP/SES wit
 SPF/DKIM/DMARC, wired into FusionAuth (SMTP settings) and the email service.
 
 ### 3. Durable object storage + queues
-LocalStack emulates S3/SQS/DynamoDB in-process. For production: real AWS
-S3/SQS/DynamoDB, or self-hosted MinIO + ElasticMQ + DynamoDB-compatible store,
-with durability and backup.
+LocalStack emulates S3/SQS/DynamoDB in-process and is ephemeral (Community has
+no persistence). For production: real AWS S3/SQS/DynamoDB, or self-hosted
+MinIO + ElasticMQ + DynamoDB-compatible store, with durability and backup.
+Attempted: `docker/selfhost/compose.localstack-persist.yml` (gresau fork) persists
+state to a volume, but S3 bucket restore across recreation was NOT verified
+(`NoSuchBucket` observed) — treat as experimental; real AWS remains the answer.
 
 ### 4. Backups / restore (verified: logical dumps + volume archives)
 `tooling/selfhost/backup-restore.sh` runs end-to-end. Logical `pg_dumpall`

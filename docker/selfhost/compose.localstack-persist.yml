@@ -1,0 +1,31 @@
+# Optional overlay: make LocalStack's S3/SQS/DynamoDB state durable.
+#
+# The official LocalStack Community image does NOT persist state (`PERSISTENCE=1`
+# is Pro-only), so object storage and queues are lost on container recreation.
+# This swaps in the community-maintained `gresau/localstack-persist` fork
+# (based on the same LocalStack 4.x line) which writes state to a named volume.
+#
+# STATUS: EXPERIMENTAL — NOT VERIFIED. A pull-and-test showed S3 *objects* are
+# written to the volume on shutdown, but the bucket was NOT restored across a
+# container recreation (`NoSuchBucket` observed). SQS/DynamoDB restore was not
+# exercised. Treat this overlay as a starting point, not a supported durability
+# path. Real AWS S3/SQS/DynamoDB remains the production recommendation
+# (see GAP-ANALYSIS #3).
+#
+# Usage (append to the canonical invocation):
+#   docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml \
+#     -f docker/selfhost/compose.localstack-persist.yml up -d
+
+services:
+  localstack:
+    image: gresau/localstack-persist:latest
+    environment:
+      # Persist S3, SQS, and DynamoDB state to the /persisted-data volume.
+      PERSIST_DEFAULT: 1
+    volumes:
+      - ./docker/localstack/init/ready.d:/etc/localstack/init/ready.d:ro
+      - localstack_data:/persisted-data
+
+volumes:
+  localstack_data:
+    name: macro_localstack_data
