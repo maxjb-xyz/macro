@@ -1,7 +1,9 @@
 # Release image strategy
 
 > Status: adopted and implemented — the per-service baked-image approach is
-> wired into `compose.yml` (inline image overrides); the operator workflow is
+> wired into `compose.yml` via `docker/selfhost/compose.release-images.yml`
+> (deep-merged into a single self-contained `compose.yml` by
+> `tooling/selfhost/flatten-compose.py`); the operator workflow is
 > `docs/selfhost/published-release-images.md`. This file is the decision record.
 
 This note records the first self-host release-image decision for the Macro Compose stack. The goal is to remove the current dependency on host-built, bind-mounted Rust development binaries for operator-facing self-host runs while keeping the self-host layer additive and easy to rebase.
@@ -84,18 +86,34 @@ Cons:
 
 Verdict: keep for preview/local automation; do not use as the durable self-host release contract.
 
-## Prototype overlay
+## Release-image overlay
 
-`docker/selfhost/compose.release-images.example.yml` implements the smallest viable per-service image override for two services:
+`docker/selfhost/compose.release-images.yml` carries the per-service image
+override for every Macro service (13 Rust + `proxy` + 5 JS/worker), extending
+the two-service prototype:
 
-- `authentication-service` -> `${MACRO_RELEASE_IMAGE_REGISTRY:-macro-release}/authentication-service:${MACRO_RELEASE_IMAGE_TAG:-dev}`
-- `static_file_service` -> `${MACRO_RELEASE_IMAGE_REGISTRY:-macro-release}/static-file-service:${MACRO_RELEASE_IMAGE_TAG:-dev}`
+- `authentication-service` -> `${MACRO_RELEASE_IMAGE_REGISTRY}/authentication-service:${MACRO_RELEASE_IMAGE_TAG}`
+- `static_file_service` -> `${MACRO_RELEASE_IMAGE_REGISTRY}/static-file-service:${MACRO_RELEASE_IMAGE_TAG}`
+- ...and the rest of the 19 Macro services.
 
-The overlay intentionally inherits each service's env_file, healthcheck, depends_on, expose, and networks from the base file. It only changes these fields:
+The overlay inherits each service's env_file, healthcheck, depends_on, expose,
+and networks from the base file. It only changes these fields:
 
 - `image`: point to an immutable per-service release tag.
 - `build: !reset null`: remove the inherited development build stanza.
 - `command: !reset null`: use the image entrypoint from `docker/Dockerfile` (`dumb-init ./svc`) rather than `/app/out/<binary>`.
+- `volumes: !reset []` (JS/worker services): drop the dev bind-mounts.
+
+Docker Compose's `include:` directive cannot override a service an included
+file already defines (v2.24+ errors with "conflicts with imported resource";
+older versions silently first-win), so the overlay is not applied at
+compose-time. `tooling/selfhost/flatten-compose.py` deep-merges all sources
+into one self-contained `compose.yml` with no `include:` and no `-f` flags.
+Regenerate after editing a source file:
+
+```bash
+python3 tooling/selfhost/flatten-compose.py
+```
 
 Render check:
 
@@ -125,7 +143,7 @@ Adopt baked per-service images as the self-host release image strategy.
 
 Implementation order:
 
-1. Keep `docker/selfhost/compose.release-images.example.yml` as an opt-in example until CI publishes the tags.
+1. Maintain `docker/selfhost/compose.release-images.yml` as the per-service image pin source (a service is added only after its image has a published tag and a smoke check).
 2. Add CI fan-out for the default Rust services using `docker/Dockerfile` and `SERVICE_NAME=<cargo_bin>`.
 3. Publish tags by registry, service, git SHA, and stable channel, for example:
    - `${registry}/authentication-service:${git_sha}`
@@ -135,6 +153,6 @@ Implementation order:
    - `search_processing_service`: use `docker/Dockerfile.search_processing_service.prebuilt` or a dedicated release Dockerfile until pdfium/default-feature handling is proven.
    - `convert_service`: use its dedicated LibreOffice/Collabora image path.
    - JS/Worker-side services (`sync_service`, `lexical_service`, `ai_editing_worker`, `analytics_proxy`, `websocket_service`) — **done** (see `build-release-images.yml`): each has a build-time Dockerfile (sync via Rust→wasm builder; lexical via a scoped workspace bundle; ai-editing + analytics + websocket via build-time `bun install`), published to GHCR and wired into `compose.yml`.
-6. Once every required service has a published image, convert the example overlay into a documented production overlay and make the production hardening checklist require immutable image tags.
+6. Once every required service has a published image, the overlay is the production default (done — `flatten-compose.py` bakes it into `compose.yml`), and the production hardening checklist requires immutable image tags.
 
 Do not make the preview artifact mount path the default self-host packaging model. It is useful for CI previews, but it preserves the host-bind-mounted binary failure mode this task is meant to eliminate.

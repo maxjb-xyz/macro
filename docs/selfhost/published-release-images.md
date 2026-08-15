@@ -58,6 +58,11 @@ docker compose up -d --wait
   images run `wrangler dev` or `bun`).
 - `volumes: !reset []` → drop the dev bind-mounts (e.g. `.` → `/app`).
 
+These pins live in `docker/selfhost/compose.release-images.yml` and are
+deep-merged into the single self-contained `compose.yml` by
+`tooling/selfhost/flatten-compose.py` (run it after editing a source file —
+`compose.yml` is generated and should not be hand-edited).
+
 Validate before booting:
 
 ```bash
