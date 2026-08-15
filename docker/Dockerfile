@@ -3,6 +3,10 @@ FROM rust:latest AS chef
 ARG SERVICE_NAME
 ENV SQLX_OFFLINE=true
 WORKDIR /app
+# rdkafka-sys (and any other C dep) needs cmake to build from source.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 FROM chef AS builder
 ARG SERVICE_NAME
