@@ -1,0 +1,288 @@
+# Production hardening overlay — apply last, on top of the frontend/published
+# overlays. Adds the lifecycle and resource policies that turn the single-host
+# appliance from "boots" into "production-ish": restart-on-crash, log rotation,
+# and conservative CPU/memory ceilings for every long-running service.
+#
+# One-shot bootstrap jobs (postgres_bootstrap, kafka_topics,
+# fusionauth_provision_idps) are intentionally NOT given a restart policy — they
+# must run once and exit, and Compose already gates dependents on
+# `service_completed_successfully`.
+#
+# Resource limits are CONSERVATIVE DEFAULT CEILINGS, not reservations: they cap
+# runaway processes but sit well above idle/steady-state usage. Tune them for
+# your dataset size and concurrency (see docs/selfhost/production-hardening-checklist.md).
+#
+# Usage:
+#   docker compose --project-directory . \
+#     -f compose.yml \
+#     -f docker/selfhost/compose.frontend.yml \
+#     -f docker/selfhost/compose.published.yml \
+#     -f docker/selfhost/compose.production.yml \
+#     --env-file .env up -d
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ---- Stateful stores -----------------------------------------------------
+  postgres:
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
+  redis:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  kafka:
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
+  search:
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
+  db:
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  fusionauth:
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  localstack:
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  mailpit:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+  # ---- Edge / proxy --------------------------------------------------------
+  proxy:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+  # ---- Rust services -------------------------------------------------------
+  authentication-service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  connection_gateway:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  contacts_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  document_cognition_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  document_storage_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  document_upload_finalizer:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  email_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  email_pubsub_workers:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  notification_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  static_file_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  static_file_cdn:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+  search_processing_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  unfurl_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  image_proxy_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+
+  # ---- JS / worker services ------------------------------------------------
+  sync_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  lexical_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  ai_editing_worker:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+  analytics_proxy:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+  websocket_service:
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"

@@ -1,5 +1,10 @@
 # Operator overlay for the upstream local Compose topology.
 #
+# SUPERSEDED: use docker/selfhost/compose.production.yml for production
+# lifecycle hardening (restart + logging + resource limits across all
+# long-running services). This file only sets restart on the 8 stateful
+# services and is kept for compatibility with older references.
+#
 # Usage:
 #   docker compose --project-directory . \
 #     -f compose.yml \

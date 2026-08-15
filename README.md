@@ -205,7 +205,8 @@ To run the full app on your machine, follow [Running locally](docs/RUNNING_LOCAL
 
 This fork is also maintaining a Docker Compose-first self-hosting path; see
 [Self-hosted fork maintenance](docs/SELF_HOSTING_FORK.md) for the fork strategy,
-current disposable-stack milestone, sync process, and known production gaps.
+and the [self-host docs index](docs/selfhost/README.md) for quick start,
+production hardening, integrations, backup/restore, and update/rollback.
 
 For a one-command single-host deploy, see the
 [MVP quick start](docs/selfhost/MVP-QUICKSTART.md).

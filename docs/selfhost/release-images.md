@@ -1,5 +1,9 @@
 # Release image strategy
 
+> Status: adopted and implemented — the per-service baked-image approach is in
+> `docker/selfhost/compose.published.yml`; the operator workflow is
+> `docs/selfhost/published-release-images.md`. This file is the decision record.
+
 This note records the first self-host release-image decision for the Macro Compose stack. The goal is to remove the current dependency on host-built, bind-mounted Rust development binaries for operator-facing self-host runs while keeping the self-host layer additive and easy to rebase.
 
 ## Current shape

@@ -1,184 +1,95 @@
-# Published release images: operator workflow
+# Release images: build once, deploy anywhere
 
-This document describes the supported path from a source checkout to running
-the Macro self-host Compose stack on immutable per-service release images,
-so operators never need to compile ~60 GB of Rust build artifacts on the
-target host.
+Operators should not build ~60 GB of Rust artifacts on the deployment host.
+CI publishes immutable per-service images to GHCR; the operator just pulls.
 
-Strategy background and alternatives are in
-[`release-images.md`](release-images.md). The short version: each Rust
-service is baked into its own image using the production-shaped
-`docker/Dockerfile`, tagged immutably, and pushed to a registry. A Compose
-overlay then points every service at its registry tag instead of the local
-`build:` stanza.
+## What gets published
 
-## Components
+CI (`build-release-images.yml`) builds one image per service from
+`docker/Dockerfile` (or a service-specific Dockerfile) and pushes to
+`ghcr.io/<org>/macro/<image>` tagged `sha-<full-sha>` **and** `:latest` on every
+push to `main`, plus `v*` on tagged releases.
 
-| Piece | Path |
-| --- | --- |
-| Build + push script | `tooling/selfhost/build-release-images.sh` |
-| Published-image Compose overlay | `docker/selfhost/compose.published.yml` |
-| Two-service example overlay (prototype) | `docker/selfhost/compose.release-images.example.yml` |
+| Image | Built from | Notes |
+| --- | --- | --- |
+| `authentication-service`, `connection-gateway`, `contacts-service`, `document-cognition-service`, `document-storage-service`, `document-upload-finalizer`, `email-service`, `email-pubsub-workers`, `notification-service`, `static-file-service`, `unfurl-service`, `image-proxy-service` | `docker/Dockerfile` | `SERVICE_NAME=<cargo_bin>` build arg |
+| `search-processing-service` | `docker/Dockerfile.search_processing_service` | pdfium bundled |
+| `proxy` | `docker/selfhost/Dockerfile.proxy` | frontend + Caddy |
 
-## Prerequisites
+Not yet published (still build on the operator host from their own
+Dockerfiles): the JS/worker services — `sync_service`, `lexical_service`,
+`ai_editing_worker`, `analytics_proxy`, `websocket_service`.
 
-- A container registry you can push to. GHCR is the documented default,
-  but any OCI registry works.
-- Docker with buildx on the build machine (the machine that builds once —
-  not the operator's server).
-- A checked-out source tree at the commit you want to release.
-- `docker login ghcr.io` (a PAT with `write:packages` for GHCR) or an
-  interactive login from your CI system.
+## Building manually (optional)
 
-## One-time release: build and push
-
-Run this on a build machine or in CI, from the repo root:
+If you aren't using the fork's CI, build + push once from a build machine (not
+the operator's server):
 
 ```bash
-# GHCR example — replace my-org with your GitHub org/user.
 ./tooling/selfhost/build-release-images.sh \
-  --registry ghcr.io/my-org \
-  --tag v2026.4.28.0 \
-  --push
+  --registry ghcr.io/YOUR_ORG --tag v2026.x.y.z --push
 ```
 
-What it does:
+`docker login ghcr.io` first (a `write:packages` token). The script accepts
+`--service <name>` to build a single image, `--dry-run` to print the matrix, and
+skips `search-processing-service` unless you pass it explicitly.
 
-- Iterates over the default set of Rust HTTP services and workers
-  (authentication-service, connection-gateway, contacts-service,
-  document-cognition-service, document-storage-service,
-  document-upload-finalizer, email-service, email-pubsub-workers,
-  notification-service, static-file-service).
-- For each one, runs `docker build -f docker/Dockerfile --build-arg
-SERVICE_NAME=<cargo_bin> -t <registry>/<service>:<tag> .`
-- If `--push` is set, pushes every tag.
-- `--tag` defaults to the short git SHA of the checkout; pass an explicit
-  semver-style tag for releases.
+## Running from published images
 
-Useful variations:
+In your operator `.env`:
 
 ```bash
-# Build only one service (repeatable flag)
-./tooling/selfhost/build-release-images.sh \
-  --registry ghcr.io/my-org --tag dev --service authentication-service
-
-# Print the build matrix without running anything
-./tooling/selfhost/build-release-images.sh \
-  --registry ghcr.io/my-org --dry-run
-
-# Build for a custom Dockerfile override (rare; normally automatic)
-./tooling/selfhost/build-release-images.sh \
-  --registry ghcr.io/my-org --dockerfile docker/Dockerfile.convert_service \
-  --service convert_service
+MACRO_RELEASE_IMAGE_REGISTRY=ghcr.io/YOUR_ORG/macro
+MACRO_RELEASE_IMAGE_TAG=sha-<full-sha>      # or a v* tag; avoid :latest for long-lived deploys
 ```
 
-Special-case services, intentionally not in the default set:
-
-- `search-processing-service` — needs pdfium handling; build with
-  `--service search-processing-service`, which switches to
-  `docker/Dockerfile.search_processing_service`.
-- `convert-service` — needs LibreOffice/Collabora assets; build with
-  `--service convert-service`, which switches to
-  `docker/Dockerfile.convert_service`.
-
-JS/worker services (sync_service, lexical_service, ai_editing_worker,
-analytics_proxy, websocket_service) keep their own existing Dockerfiles
-and are not covered by this script yet.
-
-## Operator-side: run from published images
-
-On the operator host, create or edit `.env` alongside your normal self-host
-settings (see `docs/SELF_HOSTING_DURABLE.md`):
-
-```bash
-MACRO_RELEASE_IMAGE_REGISTRY=ghcr.io/my-org
-MACRO_RELEASE_IMAGE_TAG=v2026.4.28.0
-```
-
-If the images are private, run `docker login ghcr.io` once on the operator
-host with a read-scoped token.
-
-Then bring the stack up with the published overlay:
+Then:
 
 ```bash
 docker compose --project-directory . \
   -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
+  -f docker/selfhost/compose.frontend.yml \
   -f docker/selfhost/compose.published.yml \
-  --env-file .env \
-  pull
-
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
-  -f docker/selfhost/compose.published.yml \
-  --env-file .env \
-  up -d
+  -f docker/selfhost/compose.production.yml \
+  --env-file .env up -d --wait
 ```
 
-The overlay sets `image:` for each covered service and applies
-`build: !reset null` / `command: !reset null` so Compose never tries to
-rebuild locally and each container uses the image's baked-in entrypoint
-(`dumb-init ./svc`). Everything else — env_file, healthchecks, depends_on,
-networks, volumes — is inherited unchanged from the base
-`docker/docker-compose.yml` and the self-host lifecycle overlay.
+`compose.published.yml` overrides each covered service with:
 
-Validate the rendered config before `up`:
+- `image:` → your registry/tag.
+- `build: !reset null`, `command: !reset null` → never rebuild locally; use the
+  image's baked-in `dumb-init ./svc` entrypoint.
+
+Validate before booting:
 
 ```bash
 docker compose --project-directory . \
   -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
+  -f docker/selfhost/compose.frontend.yml \
   -f docker/selfhost/compose.published.yml \
-  --env-file .env \
-  config --images
+  -f docker/selfhost/compose.production.yml \
+  --env-file .env config --images
 ```
 
-You should see one `<registry>/<service>:<tag>` line per covered service and
-the original images for the still-uncovered ones.
+## Upgrade / rollback
 
-## Rollback
+See `docs/selfhost/update-rollback.md` — the short version is: record the
+current tag + take a backup, set `MACRO_RELEASE_IMAGE_TAG` to the new `sha-*`,
+`up -d --wait`, smoke-test, and roll back by restoring the previous tag (or the
+previous env + database backup if a migration can't be reversed).
 
-Rollback is redeploying the previous immutable tag. Edit
-`MACRO_RELEASE_IMAGE_TAG` in `.env` to the prior tag and re-run `pull` +
-`up -d`. No rebuild is required.
+## Troubleshooting
 
-## Tag discipline
+- **`manifest unknown`** — the tag wasn't pushed. Re-run the build with `--push`.
+- **`unauthorized`** — `docker login ghcr.io` on the operator host with a
+  `read:packages` token (private images).
+- **A service still builds locally** — overlay order is wrong; `compose.published.yml`
+  must come after `compose.frontend.yml`.
+- **Wrong architecture** — CI builds `linux/amd64`; for arm64 operators, build
+  with `--platform linux/arm64` (buildx) and push to your own registry.
 
-The script accepts any tag; the recommended scheme is:
+## See also
 
-- `SHORT_SHA` — automatic default; covers every build from CI.
-- A stable channel tag such as `stable` or a semver release tag
-  (`v2026.4.28.0`) — re-published only from tagged releases.
-
-Operators should always pin to a specific tag in `.env`; never deploy
-`latest` in a long-lived environment.
-
-## CI fan-out (GHCR)
-
-The script is CI-friendly — any GitHub Actions job with
-`permissions: packages: write` can call it directly:
-
-```yaml
-- uses: docker/login-action@v3
-  with:
-    registry: ghcr.io
-    username: ${{ github.actor }}
-    password: ${{ secrets.GITHUB_TOKEN }}
-
-- name: Build and push release images
-  run: |
-    ./tooling/selfhost/build-release-images.sh \
-      --registry ghcr.io/${{ github.repository_owner }} \
-      --tag ${{ github.sha }} \
-      --push
-```
-
-For release tags, parameterise `--tag` from `github.ref_name`.
-
-## Smoke test and handoff
-
-After the published-image stack is up, run the operator acceptance smoke
-in [`smoke-test-spec.md`](smoke-test-spec.md) — login, document/task/channel
-behaviour, search, file storage, workers, persistence — before exposing real
-users, exactly as you would after any other deployment or upgrade.
+- `docs/selfhost/release-images.md` — the strategy decision record.
+- `docs/selfhost/update-rollback.md` — update/rollback runbook.
+- `docs/selfhost/GAP-ANALYSIS.md` — remaining gaps.
