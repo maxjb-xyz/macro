@@ -135,6 +135,23 @@ services:
     networks:
       - auth
 
+  # Provides the `otel-collector` network alias that the Cloudflare Worker
+  # services (sync, ai-editing) and analytics proxy export OTLP to. The default
+  # stack ships no observability backend (that's the jaeger/datadog profile),
+  # so without this sink their span flushes spam "DNS lookup failed" every few
+  # seconds. It accepts and discards the exports; replace with a real collector
+  # (and point OTEL_EXPORTER_OTLP_ENDPOINT at it) when observability is wanted.
+  otel_collector_sink:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    volumes:
+      - ./tooling/selfhost/otel_sink.py:/otel_sink.py:ro
+    command: ["python3", "/otel_sink.py"]
+    networks:
+      services:
+        aliases:
+          - otel-collector
+
 volumes:
   localstack_data:
     name: macro_localstack_data

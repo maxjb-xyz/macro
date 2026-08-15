@@ -1268,6 +1268,18 @@ services:
         condition: service_healthy
     networks:
     - auth
+  otel_collector_sink:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    volumes:
+    - ./tooling/selfhost/otel_sink.py:/otel_sink.py:ro
+    command:
+    - python3
+    - /otel_sink.py
+    networks:
+      services:
+        aliases:
+        - otel-collector
 networks:
   databases:
     driver: bridge

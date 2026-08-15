@@ -6,16 +6,11 @@ use crate::domain::{
     ports::GetJsBundleManifest,
 };
 use futures::StreamExt;
-use macro_env_var::env_vars;
+use macro_env_var::maybe_read_env;
 use rootcause::{Report, prelude::ResultExt};
 use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
 use url::Url;
-
-env_vars! {
-    pub struct BundleUpdatePolicyJson;
-    pub struct BundleUpdatePolicyFile;
-}
 
 struct BundleChecksumCache {
     inner: RwLock<Option<(u64, String)>>,
@@ -119,11 +114,14 @@ impl GetJsBundleManifest for DefaultBundleFetcher {
 impl BundleUpdatePolicy {
     /// Load bundle update policy from `BUNDLE_UPDATE_POLICY_JSON` or `BUNDLE_UPDATE_POLICY_FILE`.
     pub fn from_env() -> Result<Self, Report<UpdateErr>> {
-        if let Ok(json) = BundleUpdatePolicyJson::new() {
+        // These vars are optional: when unset the desktop-app bundle update
+        // policy falls back to its default. Read them directly (instead of the
+        // `env_var!` sentinels) so a missing value doesn't log an ERROR.
+        if let Some(json) = maybe_read_env("BUNDLE_UPDATE_POLICY_JSON") {
             return serde_json::from_str(&json).context(UpdateErr::Policy);
         }
-        if let Ok(path) = BundleUpdatePolicyFile::new() {
-            let json = std::fs::read_to_string(path.as_ref()).context(UpdateErr::Policy)?;
+        if let Some(path) = maybe_read_env("BUNDLE_UPDATE_POLICY_FILE") {
+            let json = std::fs::read_to_string(path).context(UpdateErr::Policy)?;
             return serde_json::from_str(&json).context(UpdateErr::Policy);
         }
         Ok(Self::default())
