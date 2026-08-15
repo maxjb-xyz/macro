@@ -39,6 +39,15 @@ question.
 ## Canonical production compose chain
 
 ```bash
+docker compose up -d --wait
+```
+
+`generate-secrets.sh` writes a `COMPOSE_FILE` line into `.env`, so that one
+command merges the base graph with the three self-host overlays
+(`compose.frontend.yml`, `compose.published.yml`, `compose.production.yml`).
+The explicit expansion is:
+
+```bash
 docker compose --project-directory . \
   -f compose.yml \
   -f docker/selfhost/compose.frontend.yml \

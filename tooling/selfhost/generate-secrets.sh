@@ -80,6 +80,11 @@ values = {
     "MCP_CREDENTIALS_KEY_SECRET_NAME": os.environ["MCP_KEY"],
     "MACRO_API_TOKEN_PRIVATE_SECRET_KEY": os.environ["PRIVATE_PEM"],
     "MACRO_API_TOKEN_PUBLIC_KEY": os.environ["PUBLIC_PEM"],
+    # Self-host deployments run as ENVIRONMENT=selfhost (not the dev `local`
+    # default in .env.example): both resolve secrets from the env file, but
+    # selfhost also drives the correct post-login redirects and cookie/URL
+    # handling for a public deployment.
+    "ENVIRONMENT": "selfhost",
 }
 
 src = Path(".env.example")

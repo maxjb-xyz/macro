@@ -55,12 +55,7 @@ git log --oneline -1           # confirm the target commit
 #   MACRO_RELEASE_IMAGE_TAG=v2026.x.y.z      (CI publishes this on v* tags)
 $EDITOR .env   # set MACRO_RELEASE_IMAGE_TAG to the new tag
 
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.published.yml \
-  -f docker/selfhost/compose.production.yml \
-  --env-file .env up -d --wait
+docker compose up -d --wait
 ```
 
 `up -d --wait` applies new migrations (via the `postgres_bootstrap` one-shot,
@@ -89,12 +84,7 @@ boot **and** after a `docker restart`.
 ```bash
 $EDITOR .env   # set MACRO_RELEASE_IMAGE_TAG back to the previous tag
 
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.published.yml \
-  -f docker/selfhost/compose.production.yml \
-  --env-file .env up -d --wait
+docker compose up -d --wait
 ```
 
 ### 5b. Full rollback (env + data)
@@ -109,12 +99,7 @@ compatible, restore everything:
 
 # 3. Bring the previous image tag back up
 $EDITOR .env   # previous MACRO_RELEASE_IMAGE_TAG
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.published.yml \
-  -f docker/selfhost/compose.production.yml \
-  --env-file .env up -d --wait
+docker compose up -d --wait
 ```
 
 ## 6. After a successful update

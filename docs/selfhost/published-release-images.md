@@ -46,12 +46,7 @@ MACRO_RELEASE_IMAGE_TAG=sha-<full-sha>      # or a v* tag; avoid :latest for lon
 Then:
 
 ```bash
-docker compose --project-directory . \
-  -f compose.yml \
-  -f docker/selfhost/compose.frontend.yml \
-  -f docker/selfhost/compose.published.yml \
-  -f docker/selfhost/compose.production.yml \
-  --env-file .env up -d --wait
+docker compose up -d --wait
 ```
 
 `compose.published.yml` overrides each covered service with:
