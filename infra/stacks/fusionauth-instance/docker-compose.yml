@@ -42,6 +42,15 @@ services:
       FUSIONAUTH_APP_MEMORY: 512M 
       FUSIONAUTH_APP_RUNTIME_MODE: development
       FUSIONAUTH_APP_URL: http://fusionauth:9011
+      # SMTP for outbound email (passwordless codes, notifications). Defaults
+      # to the local Mailpit catcher; set these in .env to use a real provider.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURITY: ${SMTP_SECURITY:-NONE}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@macro.local}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Macro Local}
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9011/api/status | grep -q '\"status\":\"Ok\"'"]
       interval: 5s

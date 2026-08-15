@@ -50,8 +50,12 @@ Code is ready (`SELF_HOST_DOMAIN` → Caddy auto-HTTPS); needs a real domain +
 port 443 reachable, plus correct public URLs/OAuth callbacks.
 
 ### 2. Real SMTP
-Mailpit is a local mail *catcher* — no delivery. Production needs SMTP/SES with
-SPF/DKIM/DMARC, wired into FusionAuth (SMTP settings) and the email service.
+FusionAuth outbound SMTP (passwordless codes, notifications) is now configurable
+via env vars — `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` — defaulting to the local
+Mailpit catcher. Set them for a real provider (SES/SendGrid). Still needs:
+SPF/DKIM/DMARC on the sending domain, and the email service's Gmail/IMAP
+integration (Google OAuth, not SMTP — see §8).
 
 ### 3. Durable object storage + queues (default)
 Durable by default: `docker/selfhost/compose.frontend.yml` swaps the ephemeral

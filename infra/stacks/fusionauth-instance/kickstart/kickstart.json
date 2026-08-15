@@ -83,11 +83,13 @@
             "timeToLiveInSeconds": 3600
           },
           "emailConfiguration": {
-            "host": "mailpit",
-            "port": 1025,
-            "security": "NONE",
-            "defaultFromEmail": "noreply@macro.local",
-            "defaultFromName": "Macro Local",
+            "host": "#{ENV.SMTP_HOST}",
+            "port": "#{ENV.SMTP_PORT}",
+            "security": "#{ENV.SMTP_SECURITY}",
+            "username": "#{ENV.SMTP_USERNAME}",
+            "password": "#{ENV.SMTP_PASSWORD}",
+            "defaultFromEmail": "#{ENV.SMTP_FROM_EMAIL}",
+            "defaultFromName": "#{ENV.SMTP_FROM_NAME}",
             "passwordlessEmailTemplateId": "33333333-3333-4333-8333-333333333333"
           },
           "externalIdentifierConfiguration": {
