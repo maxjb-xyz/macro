@@ -41,6 +41,9 @@ VOLUME_ARCHIVES=(
   kafka-volume.tar.gz:macro_kafka_data
   fusionauth-db-volume.tar.gz:fusionauth_db_data
   fusionauth-config-volume.tar.gz:fusionauth_config
+  # Only present when the durable-LocalStack overlay
+  # (compose.localstack-persist.yml) is enabled; skipped otherwise.
+  localstack-volume.tar.gz:macro_localstack_data
 )
 
 usage() {
@@ -189,6 +192,10 @@ backup() {
   for pair in "${VOLUME_ARCHIVES[@]}"; do
     archive="${pair%%:*}"
     volume="${pair##*:}"
+    if ! docker volume inspect "$volume" >/dev/null 2>&1; then
+      log "Skipping $volume (not present — durable LocalStack overlay not enabled)"
+      continue
+    fi
     log "Archiving $volume -> $archive"
     run docker run --rm \
       -v "$volume:/source:ro" \
@@ -227,6 +234,10 @@ restore() {
     archive="${pair%%:*}"
     volume="${pair##*:}"
     if [[ ! -f "$BACKUP_DIR/$archive" ]]; then
+      if [[ "$volume" == "macro_localstack_data" ]]; then
+        log "Skipping $archive (not in this backup — durable LocalStack overlay was not enabled at backup time)"
+        continue
+      fi
       echo "missing archive: $BACKUP_DIR/$archive" >&2
       exit 66
     fi
