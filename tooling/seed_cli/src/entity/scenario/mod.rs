@@ -378,14 +378,34 @@ async fn bootstrap_migrations(database_url: &str) -> anyhow::Result<()> {
             .context("creating database")?;
     }
 
-    println!("bootstrap: running migrations (idempotent)");
+    println!("bootstrap: checking migration state");
     let pool = sqlx::PgPool::connect(database_url)
         .await
         .context("connecting for migrations")?;
-    macro_db_migrator::MACRO_DB_MIGRATIONS
-        .run(&pool)
-        .await
-        .context("running migrations")?;
+
+    // The self-host stack migrates MacroDB via postgres_bootstrap +
+    // migrate-macrodb.sh, which records applied files in the `_macro.migrations`
+    // ledger (NOT sqlx's `_sqlx_migrations`). If that ledger already has rows,
+    // skip sqlx's own migration run — otherwise sqlx would re-apply every
+    // migration against the already-migrated schema and collide (e.g.
+    // "column ... already exists"). A missing `_macro.migrations` table (fresh
+    // DB, standalone seed) falls through to the sqlx migration path.
+    let already_migrated: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM _macro.migrations LIMIT 1)",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap_or(false);
+
+    if already_migrated {
+        println!("bootstrap: schema already migrated via _macro.migrations; skipping sqlx migrations");
+    } else {
+        println!("bootstrap: running migrations (idempotent)");
+        macro_db_migrator::MACRO_DB_MIGRATIONS
+            .run(&pool)
+            .await
+            .context("running migrations")?;
+    }
     pool.close().await;
     Ok(())
 }

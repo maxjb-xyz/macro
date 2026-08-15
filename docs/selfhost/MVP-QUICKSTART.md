@@ -117,20 +117,26 @@ docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml down
 
 Do **not** use `down -v` — that deletes all data volumes.
 
-## Optional: seed sample content (incomplete)
+## Optional: seed sample content
 
-`docker/selfhost/compose.seed.yml` defines a one-shot bootstrap service that
-migrates the DB and seeds an admin + workspace + sample document via
-`seed_cli scenario bootstrap`. It is not yet wired into a published image —
-the `seed_cli` binary must be added to the `services_bundle` build before the
-overlay works standalone. Until then, seed on the host (requires Rust + `just`):
+`docker/selfhost/compose.seed.yml` seeds an admin user + workspace + channel +
+welcome document on first boot (idempotent — a sentinel in the `macro_seed_state`
+volume skips later runs):
 
 ```bash
-just seed-scenario apply --file tooling/seed_cli/seed/scenarios/team-perms.json
-just seed-scenario status --file tooling/seed_cli/seed/scenarios/team-perms.json
+docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml \
+  -f docker/selfhost/compose.seed.yml up seed
 ```
 
-`status` prints persona login links.
+The seeded admin logs in passwordless at `admin@seed.macro.local` (override with
+`SEED_ADMIN_EMAIL`). Re-run after changing admin details:
+
+```bash
+docker compose --project-directory . \
+  -f compose.yml -f docker/selfhost/compose.frontend.yml \
+  -f docker/selfhost/compose.seed.yml \
+  run --rm seed sh -c 'rm -f /seed-state/.bootstrapped && /app/out/seed_cli scenario bootstrap'
+```
 
 ## Next steps toward production
 

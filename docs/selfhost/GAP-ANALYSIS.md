@@ -89,10 +89,12 @@ functional smoke test). The JS/worker services (sync, lexical, ai-editing-worker
 analytics-proxy, websocket) are not covered and keep their wrangler-dev images.
 Follow-up: cargo-chef layer caching to cut rebuild cost.
 
-### 7. Seed/bootstrap service (incomplete)
-`compose.seed.yml` + `seed_cli scenario bootstrap` are written, but the
-`seed_cli` binary is not yet added to the `services_bundle` build, so the
-overlay can't run standalone. Add `seed_cli` to the image build.
+### 7. Seed/bootstrap service (done, verified)
+`compose.seed.yml` runs the one-shot `seed_cli scenario bootstrap` (admin +
+workspace + channel + welcome document), idempotent via a `macro_seed_state`
+sentinel. `seed_cli` is in the `services_bundle` build, and the bootstrap skips
+sqlx migrations when the `_macro.migrations` ledger is present (avoids colliding
+with migrate-macrodb.sh). Verified end-to-end.
 
 ### 8. External integrations (stubbed or disabled)
 These need operator-owned accounts/credentials + public HTTPS callbacks:
