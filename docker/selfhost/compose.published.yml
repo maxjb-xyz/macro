@@ -8,7 +8,8 @@
 #          --registry ghcr.io/my-org --tag v2026.4.28.0 --push
 #   2. Set in your operator .env:
 #        MACRO_RELEASE_IMAGE_REGISTRY=ghcr.io/maxjb-xyz/macro
-#        MACRO_RELEASE_IMAGE_TAG=sha-<short>   # or v2026.4.28.0
+#        MACRO_RELEASE_IMAGE_TAG=latest             # CI publishes :latest + :sha-<full-sha> on every main push
+#        # MACRO_RELEASE_IMAGE_TAG=v2026.4.28.0     # or a version tag from a v* push
 #
 # Usage:
 #   docker compose --project-directory . \
@@ -53,6 +54,15 @@ services:
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/document-upload-finalizer:${MACRO_RELEASE_IMAGE_TAG}
     build: !reset null
     command: !reset null
+    # Published images rename the binary to /app/svc and run it as `./svc`, so
+    # the base compose's liveness probe (which greps for the dev binary name
+    # `document_upload_finalizer_local_worker`) must be overridden to match.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'sv[c]' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   email_service:
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/email-service:${MACRO_RELEASE_IMAGE_TAG}
@@ -63,6 +73,14 @@ services:
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/email-pubsub-workers:${MACRO_RELEASE_IMAGE_TAG}
     build: !reset null
     command: !reset null
+    # Same as document_upload_finalizer: base probe greps for dev name
+    # `pubsub_workers`; published binary runs as `./svc`.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'sv[c]' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   notification_service:
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/notification-service:${MACRO_RELEASE_IMAGE_TAG}
