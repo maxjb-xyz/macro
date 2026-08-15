@@ -21,7 +21,9 @@ services:
       - "443:443"
     environment:
       # Set this to a public domain to enable automatic Let's Encrypt HTTPS.
-      SELF_HOST_DOMAIN: ${SELF_HOST_DOMAIN:-}
+      # Default is plain HTTP on localhost (must be non-empty — Caddy's
+      # {$VAR:default} only falls back when the var is UNSET, not empty).
+      SELF_HOST_DOMAIN: ${SELF_HOST_DOMAIN:-http://localhost}
     networks:
       - services
       - databases
