@@ -20,7 +20,7 @@ committing real secrets.
 
 | Keys | Class | Policy |
 | --- | --- | --- |
-| `MACRO_ENV_FILE`, `ENVIRONMENT`, `PORT`, `FRONTEND_PORT`, `KAFKA_TOPIC_PARTITIONS` | `local default` | `MACRO_ENV_FILE` should point at the operator copy, usually `.env.selfhost`. Ports and topic partitions may be tuned by the operator. |
+| `MACRO_ENV_FILE`, `ENVIRONMENT`, `PORT`, `FRONTEND_PORT`, `KAFKA_TOPIC_PARTITIONS` | `local default` | `MACRO_ENV_FILE` should point at the operator copy, usually `.env.selfhost`. `ENVIRONMENT` accepts `local`, `selfhost`/`self_host` (both resolve secrets from the env file, not AWS Secrets Manager), `dev`, or `prod`. Ports and topic partitions may be tuned by the operator. |
 | `GITHUB_PACKAGES_TOKEN` | `integration key` | Optional build-time token for private GitHub package dependencies in the lexical service image. Leave blank when packages are public or release images do not build from source. |
 
 ### Public deployment identity

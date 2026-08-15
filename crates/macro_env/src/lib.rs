@@ -23,8 +23,13 @@ pub enum Environment {
     /// Dev and or staging environment
     #[serde(alias = "dev", alias = "development")]
     Develop,
-    /// The server is running on localhost
-    #[serde(alias = "lcl", alias = "localhost")]
+    /// The server is running on localhost or a self-hosted single node
+    #[serde(
+        alias = "lcl",
+        alias = "localhost",
+        alias = "selfhost",
+        alias = "self_host"
+    )]
     Local,
 }
 
@@ -84,7 +89,12 @@ impl FromStr for Environment {
         match environment {
             "prod" => Ok(Environment::Production),
             "dev" => Ok(Environment::Develop),
-            "local" => Ok(Environment::Local),
+            // Self-hosted single-node deployments resolve secrets from the env
+            // file (like local) rather than AWS Secrets Manager, so "selfhost"
+            // maps to Local. This keeps `ENVIRONMENT=selfhost` from falling
+            // back to Production (which would try to fetch secret names from
+            // AWS Secrets Manager and fail to boot).
+            "local" | "selfhost" | "self_host" => Ok(Environment::Local),
             s => Err(UnknownValue(s.to_string())),
         }
     }

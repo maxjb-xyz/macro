@@ -105,7 +105,11 @@ These need operator-owned accounts/credentials + public HTTPS callbacks. Until
 configured they now degrade cleanly (see item 3 above): SSO/link endpoints
 return `INTEGRATION_NOT_CONFIGURED` (404), `/email/init` returns
 `GMAIL_NOT_CONFIGURED` (400), and `/capabilities` drives UI hiding. Real
-activation still requires the operator to supply credentials:
+activation still requires the operator to supply credentials — the step-by-step
+runbook is **docs/selfhost/integrations-runbook.md**. Note: the self-host
+FusionAuth kickstart does **not** auto-provision the Google/GitHub/Microsoft
+identity providers (local dev gets those from xtask); operators must create
+them by hand (see the runbook).
 
 - Google/Gmail login + mail sync
 - GitHub login + PR sync (GitHub App)
