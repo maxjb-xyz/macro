@@ -41,8 +41,8 @@ VOLUME_ARCHIVES=(
   kafka-volume.tar.gz:macro_kafka_data
   fusionauth-db-volume.tar.gz:fusionauth_db_data
   fusionauth-config-volume.tar.gz:fusionauth_config
-  # Only present when the durable-LocalStack overlay
-  # (compose.localstack-persist.yml) is enabled; skipped otherwise.
+  # Present when durable LocalStack is enabled (it is, by default, via the
+  # localstack swap in compose.frontend.yml); skipped otherwise.
   localstack-volume.tar.gz:macro_localstack_data
 )
 

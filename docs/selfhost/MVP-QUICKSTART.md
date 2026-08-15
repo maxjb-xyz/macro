@@ -67,9 +67,9 @@ http://localhost/app/
 
 - Document, task, channel, and message flows (Postgres + Redis + Kafka).
 - Search (self-hosted OpenSearch).
-- File storage (LocalStack S3).
+- File storage (S3 — durable LocalStack, survives restarts).
 - Real-time sync/websockets (self-hosted workers).
-- Background jobs/queues (LocalStack SQS/DynamoDB).
+- Background jobs/queues (SQS/DynamoDB — durable LocalStack, survives restarts).
 - Passwordless login (FusionAuth + Mailpit).
 
 ## What does NOT work out of the box (external-required)
@@ -85,6 +85,18 @@ are stubbed or disabled locally:
 - Push notifications (Apple/FCM)
 - Model providers (OpenAI/Anthropic/Cohere) and MCP OAuth
 - Apollo CRM enrichment, calendar webhooks, analytics/ads pixels
+
+## Production: switch to real AWS S3/SQS/DynamoDB
+
+Object storage and queues run on a durable self-hosted LocalStack by default
+(`gresau/localstack-persist:4` + a named volume). To use real AWS instead:
+
+1. In `.env`, set `LOCAL_AWS_URL=""` (empty = default AWS endpoints).
+2. Set real `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+3. The `localstack` container becomes idle — leave it running or remove it.
+
+See `docs/selfhost/GAP-ANALYSIS.md` §3 for the tradeoffs (LocalStack went
+closed-source in March 2026; the image tag is pinned).
 
 ## Known MVP tradeoffs
 

@@ -53,15 +53,15 @@ port 443 reachable, plus correct public URLs/OAuth callbacks.
 Mailpit is a local mail *catcher* — no delivery. Production needs SMTP/SES with
 SPF/DKIM/DMARC, wired into FusionAuth (SMTP settings) and the email service.
 
-### 3. Durable object storage + queues
-LocalStack emulates S3/SQS/DynamoDB in-process and is ephemeral (Community has
-no persistence). For production: real AWS S3/SQS/DynamoDB, or self-hosted
-MinIO + ElasticMQ + DynamoDB-compatible store, with durability and backup.
-Self-hosted durable path: `docker/selfhost/compose.localstack-persist.yml`
-swaps in `gresau/localstack-persist:4` + a named volume — VERIFIED (S3, SQS,
-and DynamoDB state all survive a full container recreation). Caveat: LocalStack
-went closed-source in March 2026, so both the official `:4` and this fork are
-frozen at their last OSS release; pin the tag and plan a real-AWS migration.
+### 3. Durable object storage + queues (default)
+Durable by default: `docker/selfhost/compose.frontend.yml` swaps the ephemeral
+LocalStack Community image for `gresau/localstack-persist:4` + a named volume,
+so S3/SQS/DynamoDB state survives container recreation (VERIFIED). Production
+escape hatch: real AWS S3/SQS/DynamoDB — set `LOCAL_AWS_URL=""` and real
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in `.env`; the localstack container
+then sits idle. Caveat: LocalStack went closed-source in March 2026, so both the
+official `:4` and the gresau fork are frozen; pin the tag and plan a real-AWS
+migration for production.
 
 ### 4. Backups / restore (verified: logical dumps + volume archives)
 `tooling/selfhost/backup-restore.sh` runs end-to-end. Logical `pg_dumpall`

@@ -1,11 +1,19 @@
-# Self-host frontend + reverse proxy overlay for Macro.
+# Self-host overlay for Macro: frontend + reverse proxy + durable storage.
 #
 # Usage:
 #   docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d
 #
-# Adds a Caddy reverse proxy that serves the built frontend SPA and routes
-# API calls to the correct backend services. Port 80 is the HTTP entrypoint;
-# port 443 is published for TLS when SELF_HOST_DOMAIN is set.
+# What this overlay adds:
+#
+# 1. Caddy reverse proxy — serves the built frontend SPA at /app/ and routes
+#    API calls to the correct backend services. Port 80 is the HTTP entrypoint;
+#    port 443 is published for TLS when SELF_HOST_DOMAIN is set.
+#
+# 2. Durable object storage/queues — swaps the ephemeral LocalStack Community
+#    image for gresau/localstack-persist:4 + a named volume, so S3/SQS/DynamoDB
+#    state survives container recreation (verified). To use real AWS instead,
+#    set LOCAL_AWS_URL="" and real AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in
+#    .env — the localstack service then sits idle (see GAP-ANALYSIS #3).
 #
 # `service_healthy` is used only for services that define a healthcheck in the
 # base compose. Worker services without a healthcheck use `service_started`.
@@ -70,3 +78,21 @@ services:
   mailpit:
     environment:
       MP_WEBROOT: /mailpit
+
+  # Durable LocalStack: the base compose runs the official LocalStack Community
+  # image, which does NOT persist state. gresau/localstack-persist:4 is a
+  # drop-in fork (LocalStack 4.14) that persists S3/SQS/DynamoDB to a named
+  # volume. LocalStack moved to a closed-source model in March 2026, so both
+  # images are frozen at their last OSS release — the tag is pinned on purpose.
+  localstack:
+    image: gresau/localstack-persist:4
+    environment:
+      # Persist S3, SQS, and DynamoDB state to the /persisted-data volume.
+      PERSIST_DEFAULT: 1
+    volumes:
+      - ./docker/localstack/init/ready.d:/etc/localstack/init/ready.d:ro
+      - localstack_data:/persisted-data
+
+volumes:
+  localstack_data:
+    name: macro_localstack_data
