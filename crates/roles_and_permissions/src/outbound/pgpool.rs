@@ -131,7 +131,25 @@ impl MacroDB {
         })
         .collect();
 
-        let user_permissions = user_permissions.into_iter().collect::<HashSet<_>>();
+        let mut user_permissions = user_permissions.into_iter().collect::<HashSet<_>>();
+
+        // Self-host deployments may unlock every paywalled feature (premium
+        // features, AI) without a Stripe subscription. Inject the permissions
+        // so chat model access and other permission checks see them.
+        if macro_env::self_host_unlock_all() {
+            user_permissions.insert(Permission::new(
+                PermissionId::ReadProfessionalFeatures,
+                "self-host: unlocked professional features".to_owned(),
+            ));
+            user_permissions.insert(Permission::new(
+                PermissionId::WriteAiFeatures,
+                "self-host: unlocked AI features".to_owned(),
+            ));
+            user_permissions.insert(Permission::new(
+                PermissionId::WriteProAi,
+                "self-host: unlocked professional AI models".to_owned(),
+            ));
+        }
 
         Ok(user_permissions)
     }

@@ -99,3 +99,25 @@ impl FromStr for Environment {
         }
     }
 }
+
+/// Whether self-host deployments should unlock every paywalled feature
+/// (premium features and professional AI models) for every user without a
+/// Stripe subscription.
+///
+/// Read once from `SELF_HOST_UNLOCK_ALL` and cached for the process lifetime.
+/// Defaults to `false` (upstream behaviour); the self-host overlay sets it to
+/// `true` so operators get the full product with no billing wall.
+pub fn self_host_unlock_all() -> bool {
+    static UNLOCK_ALL: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *UNLOCK_ALL.get_or_init(|| {
+        std::env::var("SELF_HOST_UNLOCK_ALL")
+            .ok()
+            .map(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "yes" | "on"
+                )
+            })
+            .unwrap_or(false)
+    })
+}

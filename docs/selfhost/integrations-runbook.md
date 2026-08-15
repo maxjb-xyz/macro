@@ -2,7 +2,11 @@
 
 How to turn the external integrations (Google/Gmail, GitHub, Stripe, Outlook)
 on for a self-hosted Macro deployment, using operator-owned OAuth/API
-credentials supplied via environment variables.
+credentials supplied via environment variables. AI model providers are
+bring-your-own-key (§5).
+
+By default the self-host stack **unlocks every paywalled feature**
+(`SELF_HOST_UNLOCK_ALL=true`), so Stripe is optional, not a prerequisite.
 
 Until an integration is configured it **degrades cleanly**: its endpoints return
 a `INTEGRATION_NOT_CONFIGURED`/`GMAIL_NOT_CONFIGURED` response instead of a 500,
@@ -194,7 +198,10 @@ Same OpenID Connect shape as Google above, with GitHub endpoints:
 
 ## 3. Stripe billing
 
-No FusionAuth IdP — API credentials only.
+Self-host unlocks every paywalled feature by default (`SELF_HOST_UNLOCK_ALL=true`
+in the generated `.env`), so **no Stripe account is required** — every user is
+treated as premium and the billing wall is lifted. Wire Stripe only if you want
+to run your own billing:
 
 ```bash
 STRIPE_SECRET_KEY=sk_live_…
@@ -221,7 +228,30 @@ endpoints: `https://login.microsoftonline.com/<tenant>/v2.0/…`).
 
 ---
 
-## 5. Verification checklist
+## 5. AI model providers (bring-your-own-key)
+
+Macro's AI surface (chat models, AI editing, document cognition, projections)
+calls Anthropic, OpenAI, and Cerebras **directly** with keys you supply — there
+is no Macro-hosted proxy, so AI usage bills to your own provider accounts.
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-…
+OPENAI_API_KEY=sk-…
+CEREBRAS_API_KEY=…            # Cerebras inference (OpenAI-compatible)
+```
+
+The model router (`crates/agent`) requires **all three**; `COHERE_API_KEY` is a
+legacy key the current router does not consume. When any of the three is blank
+or still a `local-*`/`CHANGEME_*` stub, AI requests fail cleanly with a "model
+provider not configured" error instead of a confusing provider failure.
+
+Model access itself is gated by the user's permissions, and
+`SELF_HOST_UNLOCK_ALL` already grants the professional/AI permissions to every
+user — so once the keys are set, every user can use the full model set.
+
+---
+
+## 6. Verification checklist
 
 After setting the vars and creating the IdP(s), restart the affected services
 and confirm:

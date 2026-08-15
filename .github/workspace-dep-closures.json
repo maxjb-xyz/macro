@@ -5100,6 +5100,8 @@
     ],
     "roles_and_permissions": [
       "crates/cowlike",
+      "crates/macro_env",
+      "crates/macro_env_var",
       "crates/macro_user_id",
       "crates/non_empty",
       "crates/roles_and_permissions",

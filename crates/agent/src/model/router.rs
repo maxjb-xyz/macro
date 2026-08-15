@@ -46,6 +46,25 @@ env_var! {
     }
 }
 
+/// Whether the model-provider API keys are set to real (non-blank, non-dummy)
+/// values. Self-host ships `local-*` stubs in `.env.example`; those must not
+/// make the AI surface look configured.
+fn model_providers_configured() -> bool {
+    ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "CEREBRAS_API_KEY"]
+        .into_iter()
+        .all(|key| {
+            std::env::var(key)
+                .map(|value| !is_placeholder_key(&value))
+                .unwrap_or(false)
+        })
+}
+
+/// Blank or `local-*`/`CHANGEME_*` values are treated as unconfigured.
+fn is_placeholder_key(value: &str) -> bool {
+    let value = value.trim();
+    value.is_empty() || value.starts_with("local-") || value.starts_with("CHANGEME_")
+}
+
 /// Provider segment for native Anthropic.
 const ANTHROPIC_PROVIDER: &str = "anthropic";
 /// Provider segment the built-in OpenAI client is registered under.
@@ -249,6 +268,12 @@ impl ModelRouter {
     /// Requires `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `CEREBRAS_API_KEY`.
     /// Chain [`with_openai_provider`](Self::with_openai_provider) to add more.
     pub fn try_from_env() -> Result<Self, AgentError> {
+        // Self-host deployments are BYOK: when the model-provider keys are
+        // blank or the `local-*` stubs from `.env.example`, report a clean
+        // error instead of failing later with a confusing provider error.
+        if !model_providers_configured() {
+            return Err(AgentError::ModelProviderNotConfigured);
+        }
         let env = ApiKeys::new()?;
         let anthropic = anthropic::Client::builder()
             .api_key(env.anthropic_api_key.to_string())

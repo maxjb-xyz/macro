@@ -390,15 +390,16 @@ async fn bootstrap_migrations(database_url: &str) -> anyhow::Result<()> {
     // migration against the already-migrated schema and collide (e.g.
     // "column ... already exists"). A missing `_macro.migrations` table (fresh
     // DB, standalone seed) falls through to the sqlx migration path.
-    let already_migrated: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM _macro.migrations LIMIT 1)",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap_or(false);
+    let already_migrated: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM _macro.migrations LIMIT 1)")
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(false);
 
     if already_migrated {
-        println!("bootstrap: schema already migrated via _macro.migrations; skipping sqlx migrations");
+        println!(
+            "bootstrap: schema already migrated via _macro.migrations; skipping sqlx migrations"
+        );
     } else {
         println!("bootstrap: running migrations (idempotent)");
         macro_db_migrator::MACRO_DB_MIGRATIONS
@@ -548,7 +549,10 @@ fn validate_scenario_database_url(database_url: &str) -> anyhow::Result<()> {
 /// Gate for the self-host bootstrap. Unlike the local scenario commands it is
 /// not pinned to the local `user`/`macrodb` database, but it must still be an
 /// explicit opt-in and target a postgres database.
-#[allow(clippy::disallowed_methods, reason = "Only used when running the self-host bootstrap")]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "Only used when running the self-host bootstrap"
+)]
 fn validate_bootstrap_environment(database_url: &str) -> anyhow::Result<()> {
     ensure!(
         std::env::var("SEED_BOOTSTRAP").as_deref() == Ok("true"),

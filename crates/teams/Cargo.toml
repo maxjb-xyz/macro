@@ -57,6 +57,7 @@ macro_authorization = { path = "../macro_authorization", optional = true, defaul
   "axum",
 ] }
 macro_event_broker = { path = "../macro_event_broker", default-features = false }
+macro_env = { path = "../macro_env" }
 macro_event_topics = { path = "../macro_event_topics" }
 macro_user_id = { path = "../macro_user_id" }
 macro_uuid = { path = "../macro_uuid" }

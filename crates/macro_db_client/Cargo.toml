@@ -19,6 +19,7 @@ chrono = { workspace = true }
 document_sub_type = { path = "../document_sub_type" }
 entity_access_db_utils = { path = "../entity_access_db_utils" }
 futures = { workspace = true }
+macro_env = { path = "../macro_env" }
 macro_user_id = { path = "../macro_user_id" }
 macro_uuid = { path = "../macro_uuid" }
 model = { path = "../model" }

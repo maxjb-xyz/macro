@@ -26,6 +26,13 @@ docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d --wa
   migrations on boot (idempotent re-runs verified).
 - **TLS-ready** — `SELF_HOST_DOMAIN` parameter: local = HTTP on :80; set a
   domain = Caddy auto-HTTPS on :443. (Unused until a domain is provisioned.)
+- **Full feature unlock** — `SELF_HOST_UNLOCK_ALL=true` (default in the
+  generated self-host `.env`) lifts the Stripe paywall: every user is granted
+  the professional/AI permissions and the Stripe-backed premium extractor
+  passes, so no billing account is required.
+- **BYOK AI** — model providers are bring-your-own-key (`ANTHROPIC_API_KEY`,
+  `OPENAI_API_KEY`, `CEREBRAS_API_KEY`); blank/`local-*` keys degrade to a
+  clean "model provider not configured" error instead of a provider failure.
 
 ## 📝 Noted — self-hosting product changes (parked, not started)
 
@@ -112,10 +119,10 @@ auto-provisioned by the `fusionauth_provision_idps` one-shot service
 
 - Google/Gmail login + mail sync
 - GitHub login + PR sync (GitHub App)
-- Stripe billing
+- Stripe billing (optional — `SELF_HOST_UNLOCK_ALL` lifts the paywall by default)
 - LiveKit calls (server + license)
 - Push notifications (Apple APNs / Firebase FCM)
-- Model providers (OpenAI / Anthropic / Cohere / Cerebras keys)
+- Model providers (OpenAI / Anthropic / Cerebras keys — BYOK, graceful degradation)
 - MCP OAuth (Slack, GitHub)
 - Apollo CRM enrichment
 - Calendar webhooks
@@ -150,4 +157,5 @@ needs a real metrics/logs/tracing pipeline (OTel collector → backend) and aler
 4. Incremental migrations on boot (make upgrades safe).
 5. Backup/restore drill (make data durable).
 6. Observability + alerting.
-7. Then, integration-by-integration: Google → GitHub → Stripe → LiveKit → push.
+7. Then, integration-by-integration: Google → GitHub → Outlook → LiveKit → push
+   (Stripe and AI model providers are optional/BYOK, not blocking).

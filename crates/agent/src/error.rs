@@ -26,6 +26,9 @@ pub enum AgentError {
     /// Model id missing a `provider/` segment.
     #[error("malformed model")]
     MalformedModel(String),
+    /// Model provider API keys are not configured (blank or dummy values).
+    #[error("model provider not configured")]
+    ModelProviderNotConfigured,
     /// Expected env var
     #[error(transparent)]
     EnvVar(#[from] macro_env_var::VarNameErr),

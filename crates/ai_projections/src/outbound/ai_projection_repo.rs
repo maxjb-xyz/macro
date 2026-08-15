@@ -374,6 +374,16 @@ impl AiProjectionRepository for AiProjectionRepositoryImpl {
         user_id: &MacroUserIdStr<'_>,
         permission: &str,
     ) -> Result<bool, AiProjectionError> {
+        // Self-host deployments may unlock every paywalled feature without a
+        // Stripe subscription; treat the premium/AI permissions as granted.
+        if macro_env::self_host_unlock_all()
+            && matches!(
+                permission,
+                "read:professional_features" | "write:ai_features" | "write:proai"
+            )
+        {
+            return Ok(true);
+        }
         let has_permission = sqlx::query_scalar!(
             r#"
             SELECT EXISTS (

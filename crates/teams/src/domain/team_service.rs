@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod test;
 
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, str::FromStr, sync::Arc};
 
 use channels::domain::{
     models::{ChannelType, CreateChannelRequest, Sender},
@@ -627,6 +627,14 @@ where
         &self,
         user_id: &MacroUserIdStr<'_>,
     ) -> Result<Option<stripe::SubscriptionId>, TeamError> {
+        // Self-host deployments unlock every premium feature without Stripe:
+        // report a synthetic active subscription so the premium extractor passes.
+        if macro_env::self_host_unlock_all() {
+            return Ok(Some(
+                stripe::SubscriptionId::from_str("sub_selfhost_unlock")
+                    .expect("hardcoded self-host subscription id must parse"),
+            ));
+        }
         let Some(customer_id) = self.team_repository.get_stripe_customer_id(user_id).await? else {
             return Ok(None);
         };

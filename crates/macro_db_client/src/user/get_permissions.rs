@@ -36,6 +36,15 @@ pub async fn get_user_permissions(
         result.insert(user_permission.permission_id);
     }
 
+    // Self-host deployments may unlock every paywalled feature without a Stripe
+    // subscription. Inject the premium/AI permissions so downstream checks
+    // (Gmail inbox paywall, user quota, legacy permissions) see them.
+    if macro_env::self_host_unlock_all() {
+        result.insert("read:professional_features".to_owned());
+        result.insert("write:ai_features".to_owned());
+        result.insert("write:proai".to_owned());
+    }
+
     Ok(result)
 }
 

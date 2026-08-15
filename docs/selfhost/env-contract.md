@@ -89,7 +89,7 @@ committing real secrets.
 | GitHub login/sync | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_IDP_ID`, `GITHUB_SYNC_APP_URL`, `GITHUB_SYNC_APP_CLIENT_ID`, `GITHUB_SYNC_APP_CLIENT_SECRET`, `GITHUB_INSTALLATION_STATE_SECRET`, `GITHUB_WEBHOOK_SECRET_KEY`, `GITHUB_SYNC_APP_PEM_SECRET_KEY` | `integration key` | Requires OAuth/GitHub App setup and webhook delivery. Keep blank or `CHANGEME_*` until configured. |
 | Stripe billing | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET_KEY` | `integration key` | Billing is not self-host-ready until the operator decides product/billing policy and webhook routing. |
 | Push notifications | `APPLE_BUNDLE_ID`, `SNS_FCM_PLATFORM_ARN`, `SNS_APNS_PLATFORM_ARN` | `integration key` | Mobile push stays disabled/stubbed without Apple/FCM/SNS or equivalent delivery. |
-| Model providers and MCP | `MCP_CREDENTIALS_KEY_SECRET_NAME`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `COHERE_API_KEY`, `SLACK_MCP_CLIENT_ID`, `SLACK_MCP_CLIENT_SECRET` | `integration key` / `internal secret` | Boot stubs do not make model calls or MCP OAuth work. Operators need provider accounts, data policy, rate limits, and credential encryption. |
+| Model providers and MCP | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CEREBRAS_API_KEY`, `COHERE_API_KEY`, `MCP_CREDENTIALS_KEY_SECRET_NAME`, `SLACK_MCP_CLIENT_ID`, `SLACK_MCP_CLIENT_SECRET` | `integration key` / `internal secret` | Bring-your-own-key: operators set their own provider keys. The model router requires `ANTHROPIC_API_KEY` + `OPENAI_API_KEY` + `CEREBRAS_API_KEY`. When blank or `local-*`/`CHANGEME_*` stubs, AI requests return a clean "model provider not configured" error instead of a confusing provider failure. MCP OAuth needs provider app credentials and credential encryption. |
 | LiveKit calls | `LIVEKIT_SERVER_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | `integration key` | Requires LiveKit service/licensing or a self-hosted LiveKit deployment. |
 | Calendar/webhooks | `CAL_WEBHOOK_SECRET_KEY`, `CAL_EVENT_TYPE_CONTENT_NAMES_KEY`, `CALENDAR_SYNC_ENABLED`, `CALENDAR_SCOPE_ENABLED` | `integration key` / `disabled feature` | Defaults off in `.env.selfhost.example`. Enable only after callback routing and secret rotation are configured. |
 | Analytics/ads pixels | `META_PIXEL_ID`, `META_ACCESS_TOKEN` | `integration key` / `disabled feature` | Tracking should remain disabled unless the operator explicitly opts in and documents privacy policy. |
@@ -124,6 +124,14 @@ Unconfigured integrations fail closed instead of 500-ing:
 - `GMAIL_SYNC_ENABLED` — default `true` in code, `false` in generated self-host
   `.env`; when `false`, `/email/init` returns `GMAIL_NOT_CONFIGURED` (400)
   instead of failing on Gmail provider calls.
+- `SELF_HOST_UNLOCK_ALL` — default `false` in code, `true` in generated
+  self-host `.env`; when `true`, every user is treated as premium (professional
+  + AI permissions injected; the Stripe-backed premium extractor passes), so no
+  billing wall blocks any feature.
+- Model providers (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CEREBRAS_API_KEY`) —
+  bring-your-own-key; when blank or `local-*`/`CHANGEME_*` stubs, the AI model
+  router returns a clean "model provider not configured" error instead of a
+  provider failure.
 - `GET /auth/capabilities` reports `{google_login, github_login, microsoft_login,
   stripe_billing}`; the web UI hides the matching connect cards when disabled.
 

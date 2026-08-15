@@ -41,6 +41,7 @@ worker = [
 # Core
 anyhow = { workspace = true }
 chrono = { workspace = true }
+macro_env = { path = "../macro_env" }
 macro_user_id = { path = "../macro_user_id" }
 models_ai_projection = { path = "../models_ai_projection" }
 serde = { workspace = true }
