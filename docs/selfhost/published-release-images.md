@@ -7,8 +7,8 @@ CI publishes immutable per-service images to GHCR; the operator just pulls.
 
 CI (`build-release-images.yml`) builds one image per service from
 `docker/Dockerfile` (or a service-specific Dockerfile) and pushes to
-`ghcr.io/<org>/macro/<image>` tagged `sha-<full-sha>` **and** `:latest` on every
-push to `main`, plus `v*` on tagged releases.
+`ghcr.io/<org>/macro/<image>` tagged `sha-<full-sha>` + `:latest` + `v*` on
+each release (`v*` tag), or on manual `workflow_dispatch`.
 
 | Image | Built from | Notes |
 | --- | --- | --- |

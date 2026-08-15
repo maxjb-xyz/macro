@@ -50,8 +50,8 @@ them alongside step 1. If `backup-restore.sh` isn't your tool, run your own
 git pull                       # pull the release commit
 git log --oneline -1           # confirm the target commit
 
-# Point at the new images. :latest tracks main; pin a sha for reproducibility:
-#   MACRO_RELEASE_IMAGE_TAG=sha-<full-sha>   (CI publishes this on every push)
+# Point at the new images. :latest tracks the latest release; pin for reproducibility:
+#   MACRO_RELEASE_IMAGE_TAG=sha-<full-sha>   (the release commit's SHA)
 #   MACRO_RELEASE_IMAGE_TAG=v2026.x.y.z      (CI publishes this on v* tags)
 $EDITOR .env   # set MACRO_RELEASE_IMAGE_TAG to the new tag
 
