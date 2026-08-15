@@ -1,19 +1,28 @@
 # Self-host single-origin reverse proxy (Caddy).
 #
-# This is the operator-owned equivalent of the generated xtask Caddyfile. It
-# serves the built frontend SPA and routes API paths to the backend services
+# Serves the built frontend SPA and routes API paths to the backend services
 # using the same path prefixes and service names/aliases the local stack uses.
 # Keep route prefixes in sync with tooling/xtask/.../inventory.rs.
+#
+# TLS: set SELF_HOST_DOMAIN to a public domain (and publish ports 80/443) and
+# Caddy auto-provisions Let's Encrypt HTTPS with an HTTP->HTTPS redirect.
+# Leave it unset for plain HTTP on localhost.
 
 {
-    auto_https off
     admin off
 }
 
-:80 {
-    # Compose healthcheck probe (see docker/selfhost/compose.frontend.yml).
+# Always-on, host-independent health listener for the Compose healthcheck.
+# Keeps the healthcheck working whether the main site is localhost (HTTP) or a
+# public domain (HTTPS) — the main site is host-matched.
+:9090 {
     respond /healthz 200
+}
 
+# Main site. Default `http://localhost` serves plain HTTP on :80. When
+# SELF_HOST_DOMAIN is a real domain, Caddy serves HTTPS on :443 with automatic
+# Let's Encrypt certs and an HTTP->HTTPS redirect.
+{$SELF_HOST_DOMAIN:http://localhost} {
     # ---- Rust service routes (from inventory path_prefix) ----
     handle_path /auth/* {
         reverse_proxy authentication-service:8080

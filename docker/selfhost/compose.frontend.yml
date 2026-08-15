@@ -4,7 +4,8 @@
 #   docker compose -f compose.yml -f docker/selfhost/compose.frontend.yml up -d
 #
 # Adds a Caddy reverse proxy that serves the built frontend SPA and routes
-# API calls to the correct backend services. Port 80 is the single entrypoint.
+# API calls to the correct backend services. Port 80 is the HTTP entrypoint;
+# port 443 is published for TLS when SELF_HOST_DOMAIN is set.
 #
 # `service_healthy` is used only for services that define a healthcheck in the
 # base compose. Worker services without a healthcheck use `service_started`.
@@ -17,6 +18,10 @@ services:
     image: macro-selfhost-proxy:dev
     ports:
       - "80:80"
+      - "443:443"
+    environment:
+      # Set this to a public domain to enable automatic Let's Encrypt HTTPS.
+      SELF_HOST_DOMAIN: ${SELF_HOST_DOMAIN:-}
     networks:
       - services
       - databases
@@ -52,7 +57,7 @@ services:
         condition: service_started
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:80/healthz"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9090/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3

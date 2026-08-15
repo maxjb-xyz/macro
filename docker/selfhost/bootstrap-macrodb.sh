@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# One-shot MacroDB bootstrap: wait for Postgres, then apply migrations if the
-# schema is empty. Runs inside the postgres_bootstrap container.
+# One-shot MacroDB bootstrap: wait for Postgres, ensure macrodb exists, then
+# apply migrations incrementally. Runs inside the postgres_bootstrap container.
 #
-# NOTE: postgres creates `macrodb` itself on fresh initdb (POSTGRES_DB=macrodb),
-# so the database always exists. The migration gate is therefore "are there
-# tables yet", not "does the database exist".
+# NOTE: postgres creates `macrodb` itself on fresh initdb (POSTGRES_DB=macrodb).
+# Migration is idempotent/incremental via the `_macro_migrations` ledger, so
+# this runs on every boot and only applies new migrations (safe for upgrades).
 
 set -euo pipefail
 
@@ -26,12 +26,9 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 
-table_count="$($PSQL -d macrodb -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema')")"
-
-if [ "$table_count" -gt 0 ]; then
-  echo "macrodb already migrated (${table_count} tables) — skipping"
-  exit 0
+# Ensure macrodb exists (defensive; postgres already creates it via POSTGRES_DB).
+if ! $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = 'macrodb'" | grep -q 1; then
+  createdb -h postgres -U user macrodb
 fi
 
-echo "macrodb is empty — applying migrations"
 /bin/bash /migrate.sh
