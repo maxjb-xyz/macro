@@ -31,12 +31,18 @@ DSS_AUTH_KEY="$(gen_hex 32)"
 FA_CLIENT_SECRET="$(gen_b64 32)"
 JWT_SECRET="$(gen_hex 48)"
 FA_ADMIN_PASSWORD="$(openssl rand -base64 24 | tr -d '\n' | tr '+/' 'Aa')"
-INTERNAL_API_SECRET_KEY="$(gen_hex 32)"
-INTERNAL_API_KEY="$(gen_hex 32)"
-INTERNAL_AUTH_KEY="$(gen_hex 32)"
+# Internal service-to-service auth. These five keys were all "local" in
+# .env.example and MUST share one value: e.g. document_storage_service calls
+# lexical with INTERNAL_API_SECRET_KEY but lexical verifies INTERNAL_AUTH_KEY,
+# and the FusionAuth webhook verifies INTERNAL_API_KEY. Splitting them breaks
+# cross-service auth.
+INTERNAL_KEY="$(gen_hex 32)"
+INTERNAL_API_SECRET_KEY="$INTERNAL_KEY"
+INTERNAL_API_KEY="$INTERNAL_KEY"
+INTERNAL_AUTH_KEY="$INTERNAL_KEY"
+SYNC_AUTH_KEY="$INTERNAL_KEY"
+DOC_PERM_JWT="$INTERNAL_KEY"
 AUTH_SVC_SECRET="$(gen_hex 32)"
-SYNC_AUTH_KEY="$(gen_hex 32)"
-DOC_PERM_JWT="$(gen_hex 32)"
 MCP_KEY="$(gen_b64 32)"
 
 # Macro API token signing uses RS256 (crates/macro_auth/src/macro_api_token.rs).
