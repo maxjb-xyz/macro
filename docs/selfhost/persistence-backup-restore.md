@@ -10,7 +10,7 @@ This plan covers the Compose topology rendered by:
 env MACRO_ENV_FILE=$PWD/.env.example \
   docker compose --project-directory . \
   -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
+  -f docker/selfhost/compose.frontend.yml \
   --env-file .env.example config --volumes
 ```
 
@@ -59,7 +59,7 @@ Use both logical exports and volume archives:
 ```bash
 docker compose --project-directory . \
   -f compose.yml \
-  -f docker/docker-compose.self-host.yml \
+  -f docker/selfhost/compose.frontend.yml \
   config --volumes
 ```
 
