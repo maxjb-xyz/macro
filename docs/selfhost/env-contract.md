@@ -39,13 +39,19 @@ committing real secrets.
 
 ### Object storage, queues, and tables
 
+Self-host ships a durable LocalStack (S3/SQS/DynamoDB). The values below are
+the **deterministic names LocalStack provisions at boot**
+(`docker/localstack/init/ready.d/001-macro-resources.sh`) and the code-owned
+catalog (`tooling/xtask/crates/xtask_local/src/local/resources.rs`). They are
+**not secrets** — leave them at the shipped defaults.
+
 | Keys | Class | Policy |
 | --- | --- | --- |
-| `LOCAL_AWS_URL` | `local default` / `integration key` | Set for LocalStack or explicit S3-compatible endpoints. Leave blank for standard AWS SDK endpoints. |
-| `AWS_REGION`, `AWS_DEFAULT_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | `integration key` | Real object/queue/table provider credentials. LocalStack `test` credentials are not production credentials. |
-| `ATTACHMENT_BUCKET`, `DOCUMENT_STORAGE_BUCKET`, `DOCX_DOCUMENT_UPLOAD_BUCKET`, `STATIC_STORAGE_BUCKET`, `UPLOAD_STAGING_BUCKET` | `integration key` | Must name durable buckets with retention/backup policy. |
-| `BACKFILL_JOBS_TABLE`, `BULK_UPLOAD_REQUESTS_TABLE`, `CONNECTION_GATEWAY_TABLE`, `STATIC_FILE_SERVICE_DYNAMODB_TABLE_NAME` | `integration key` | Must name provisioned DynamoDB-compatible tables or a documented equivalent. |
-| `DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL`, `OVERRIDE_*_QUEUE`, `OVERRIDE_STATIC_FILE_SERVICE_S3_EVENT_QUEUE_URL` | `integration key` | Must point at provisioned queues with retry, visibility timeout, and dead-letter policy. Queue names are acceptable only when the service code expects a bare name. |
+| `LOCAL_AWS_URL` | `local default` | **Must be set to `http://localstack:4566`** (LocalStack). An *empty* value is not "real AWS" — the AWS SDK then loads an empty endpoint and every object-store call (PFP upload, document upload, attachments) fails. To use real AWS, remove the variable entirely (not empty) and supply real credentials. |
+| `AWS_REGION`, `AWS_DEFAULT_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | `local default` | LocalStack test credentials (`test`/`test`). Replace with real provider credentials only if you externalize object storage. |
+| `ATTACHMENT_BUCKET`, `DOCUMENT_STORAGE_BUCKET`, `DOCX_DOCUMENT_UPLOAD_BUCKET`, `STATIC_STORAGE_BUCKET`, `UPLOAD_STAGING_BUCKET`, `CALL_RECORDING_BUCKET_NAME` | `local default` (deterministic) | Must match the LocalStack-provisioned bucket names (`doc-storage`, `macro-email-attachments`, …). |
+| `BACKFILL_JOBS_TABLE`, `BULK_UPLOAD_REQUESTS_TABLE`, `CONNECTION_GATEWAY_TABLE`, `STATIC_FILE_SERVICE_DYNAMODB_TABLE_NAME` | `local default` (deterministic) | Must match the LocalStack-provisioned table names. `BACKFILL_JOBS_TABLE` is self-created by `search_processing_service` on startup. |
+| `OVERRIDE_WEBHOOK_EVENT_QUEUE`, `OVERRIDE_EMAIL_CRM_CLEANUP_QUEUE`, `OVERRIDE_REMINDER_DISPATCH_QUEUE`, `OVERRIDE_CALENDAR_REMINDER_DISPATCH_QUEUE`, `DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL` | `local default` (deterministic) | Full LocalStack queue URLs. Most other queues resolve from code-owned bare-name defaults in `macro_queues`; do **not** set their `OVERRIDE_*` vars. |
 | `ENABLE_EMAIL_SCHEDULED_QUEUE`, `ENABLE_GMAIL_OPS_QUEUE` | `local default` | Enable only when the corresponding queues and credentials are configured. |
 
 ### Internal service secrets

@@ -44,8 +44,8 @@ for queue in \
   static-file-s3-event-notification-queue \
   reminder-dispatch-queue \
   calendar-reminder-dispatch-queue \
-  upload-extractor-queue \
-  organization-retention-queue
+  bulk-upload-queue \
+  organization-retention-handler-queue
 do
   create_queue "$queue"
 done

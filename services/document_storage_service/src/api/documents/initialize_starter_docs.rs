@@ -14,12 +14,15 @@ use entity_access::domain::{
 };
 use favorites::domain::ports::FavoritesService;
 use macro_authorization::{MacroAuthorizationExtractor, UserOrInternal};
+use macro_db_client::instructions::create::insert_instructions_document;
+use macro_db_client::instructions::get::get_instructions_document;
 use macro_user_id::user_id::MacroUserIdStr;
 use model::document_storage_service_internal::{
     InitializeStarterDocsResponse, StarterDocHowToGuide,
 };
 use model::response::GenericResponse;
 use model_entity::EntityType;
+use models_dcs::constants::INSTRUCTIONS_FILE_NAME;
 use models_properties::api::{AddPropertyOptionRequest, AddStringOptionRequest, SetPropertyValue};
 use models_properties::service::property_option::PropertyOptionValue;
 use properties::{PropertiesService as _, domain::model::TagScope};
@@ -247,6 +250,45 @@ pub async fn handler(
             tracing::error!(error=?e, "failed to create how to guide document");
             return Err(internal_error("failed to create how to guide document"));
         }
+    }
+
+    // Seed the "instructions" note (the AI-instructions document the frontend
+    // reads at /instructions) if it doesn't exist yet, so a fresh account's
+    // first open never 404s. Best-effort: a failure here must not fail the
+    // seeding request — the note is also created on demand by POST
+    // /instructions.
+    match get_instructions_document(&state.db, user_context.authorization.user.macro_user_id.clone()).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            match state
+                .documents_state
+                .creator
+                .create_markdown_text(
+                    user_id.clone(),
+                    NewMarkdownTextDocument::empty_note(NewDocumentMetadata::new(
+                        INSTRUCTIONS_FILE_NAME,
+                    )),
+                )
+                .await
+            {
+                Ok(created) => {
+                    let document_id = created.document_id().to_string();
+                    if let Err(e) =
+                        insert_instructions_document(&state.db, user_context.authorization.user.macro_user_id.clone(), &document_id)
+                            .await
+                    {
+                        tracing::error!(error=?e, "failed to link seeded instructions document");
+                        let _ = state
+                            .documents_state
+                            .service
+                            .cleanup_created_document(&document_id)
+                            .await;
+                    }
+                }
+                Err(e) => tracing::error!(error=?e, "failed to seed instructions document"),
+            }
+        }
+        Err(e) => tracing::error!(error=?e, "failed to check for instructions document"),
     }
 
     // Record mention backlinks (the References panel) for the starter set.
