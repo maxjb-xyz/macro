@@ -937,7 +937,7 @@ impl DurableObject for DocumentSyncSession {
         if req.method() == Method::Options {
             return Ok(Response::builder()
                 .with_status(status_codes::OK)
-                .with_cors(&cors(set_allow_origin.as_deref(), &self.env)?)
+                .with_cors(&cors(set_allow_origin.as_deref(), &self.env))?
                 .empty());
         }
         let traceparent = worker_rs_otel::traceparent_from_request(&req);
