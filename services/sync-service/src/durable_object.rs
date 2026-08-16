@@ -925,7 +925,7 @@ impl DurableObject for DocumentSyncSession {
             .get("Origin")
             .context("No `Origin` header found in header")?
         {
-            if is_origin_allowed(&origin) {
+            if is_origin_allowed(&origin, &self.env) {
                 Some(origin)
             } else {
                 return Ok(response(status_codes::FORBIDDEN));
@@ -937,7 +937,7 @@ impl DurableObject for DocumentSyncSession {
         if req.method() == Method::Options {
             return Ok(Response::builder()
                 .with_status(status_codes::OK)
-                .with_cors(&cors(set_allow_origin.as_deref()))?
+                .with_cors(&cors(set_allow_origin.as_deref(), &self.env)?)
                 .empty());
         }
         let traceparent = worker_rs_otel::traceparent_from_request(&req);
@@ -959,7 +959,7 @@ impl DurableObject for DocumentSyncSession {
         )
         .await;
         res.context("DurableObject::fetch error")?
-            .with_cors(&cors(set_allow_origin.as_deref()))
+            .with_cors(&cors(set_allow_origin.as_deref(), &self.env))
     }
 
     async fn websocket_message(&self, ws: WebSocket, msg: WebSocketIncomingMessage) -> Result<()> {
@@ -1205,9 +1205,19 @@ pub static ALLOWED_ORIGINS: &[&str] = &[
     "https://apollo-testing.macro.com",
 ];
 
-pub fn is_origin_allowed(origin: &str) -> bool {
+pub fn is_origin_allowed(origin: &str, env: &Env) -> bool {
     if ALLOWED_ORIGINS.contains(&origin) {
         return true;
+    }
+    // Self-host: operator-configured extra origins (comma-separated), e.g. the
+    // public base URL the app is served from. SaaS hardcodes macro.com domains,
+    // but a self-host deployment serves from an arbitrary origin, so allow the
+    // operator to extend the allowlist via SYNC_ALLOWED_ORIGINS.
+    if let Ok(configured) = env.var("SYNC_ALLOWED_ORIGINS") {
+        let configured = configured.to_string();
+        if configured.split(',').map(str::trim).any(|o| o == origin) {
+            return true;
+        }
     }
     // `localhost` and `*.localhost` (loopback-reserved; local dev uses
     // per-persona hostnames so each seeded user gets its own cookie jar).
@@ -1228,11 +1238,11 @@ pub fn is_origin_allowed(origin: &str) -> bool {
 }
 
 /// Workaround for this bug: <https://github.com/cloudflare/workers-rs/issues/554>
-pub fn cors(request_origin: Option<&str>) -> Cors {
+pub fn cors(request_origin: Option<&str>, env: &Env) -> Cors {
     use worker::Method;
     let cors_origins = request_origin
         .map(|o| {
-            if is_origin_allowed(o) {
+            if is_origin_allowed(o, env) {
                 vec![o.to_string()]
             } else {
                 vec![]
