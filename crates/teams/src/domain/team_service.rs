@@ -578,10 +578,16 @@ where
             .map_err(|error| CreateTeamError::StorageLayerError(error.into()))?;
 
         if let Some(subscription_id) = subscription_id {
-            self.customer_repository
-                .convert_subscription_to_team(subscription_id, team.id(), user_id)
-                .await
-                .map_err(|e| CreateTeamError::StorageLayerError(e.into()))?;
+            // Self-host's synthetic "unlock all" subscription is not a real
+            // Stripe subscription — skip the Stripe metadata write, which
+            // would fail on the fake id (and a placeholder/absent Stripe key)
+            // and 500 the whole create-team request.
+            if !macro_env::self_host_unlock_all() {
+                self.customer_repository
+                    .convert_subscription_to_team(subscription_id, team.id(), user_id)
+                    .await
+                    .map_err(|e| CreateTeamError::StorageLayerError(e.into()))?;
+            }
         }
         self.team_repository
             .move_github_app_installation_to_team_if_exists(user_id, team.id())
