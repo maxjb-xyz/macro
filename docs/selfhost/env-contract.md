@@ -65,7 +65,10 @@ committing real secrets.
 | Keys | Class | Policy |
 | --- | --- | --- |
 | `FUSIONAUTH_BASE_URL` | `local default` | Service-to-service FusionAuth URL inside Compose. |
-| `FUSIONAUTH_API_KEY_SECRET_KEY`, `FUSIONAUTH_API_KEY`, `FUSIONAUTH_CLIENT_ID`, `FUSIONAUTH_CLIENT_SECRET_KEY` | `internal secret` | Replace local kickstart values with operator-owned FusionAuth tenant/application credentials. |
+| `FUSIONAUTH_CLIENT_ID`, `FUSIONAUTH_TENANT_ID`, `AUDIENCE` | `deterministic` | Fixed UUIDs baked into `kickstart.json` (client `22222222-…`, tenant `11111111-…`). Not secrets — keep them exactly as-is or auth, kickstart, and the sync one-shot disagree. |
+| `FUSIONAUTH_API_KEY`, `FUSIONAUTH_API_KEY_SECRET_KEY` | `internal secret` | The FusionAuth API key; both must hold the **same** value (auth service reads `*_SECRET_KEY`, kickstart/sync read the bare key). Created by kickstart on **first boot only** — changing it later does nothing until the FusionAuth volume is reset or the key is rotated in the admin UI. |
+| `FUSIONAUTH_CLIENT_SECRET_KEY` | `internal secret` | OAuth client secret for the Macro application. |
+| `FUSIONAUTH_ADMIN_EMAIL`, `FUSIONAUTH_ADMIN_PASSWORD` | `internal secret` | FusionAuth admin login (kickstart creates `admin@macro.com`). Required for kickstart to complete; missing value aborts the bootstrap. |
 
 ### Email delivery
 
