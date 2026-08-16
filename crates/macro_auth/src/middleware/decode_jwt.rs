@@ -211,7 +211,10 @@ fn validate_macro_api_token(
     validation.set_issuer(&[issuer.as_ref()]);
 
     let init = move || {
-        Ok(DecodingKey::from_rsa_pem(public_key.as_ref().as_bytes())
+        // Self-host stores the PEM single-line with literal `\n`
+        // (generate-secrets.sh); normalize to real newlines before parsing.
+        let normalized = public_key.as_ref().replace("\\n", "\n");
+        Ok(DecodingKey::from_rsa_pem(normalized.as_bytes())
             .context("unable to decode key")?)
     };
     let decoding_key = DECODING_KEY

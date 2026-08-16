@@ -52,10 +52,14 @@ pub fn encode_macro_api_token(args: EncodeMacroApiTokenArgs) -> anyhow::Result<S
     let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
     header.kid = Some("macro".to_string());
 
+    // Self-host stores the PEM single-line with literal `\n` (generate-secrets.sh);
+    // normalize to real newlines before parsing.
+    let private_key = args.private_key.replace("\\n", "\n");
+
     let token = jsonwebtoken::encode(
         &header,
         &claims,
-        &jsonwebtoken::EncodingKey::from_rsa_pem(args.private_key.as_ref())
+        &jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes())
             .context("failed to create encoding key")?,
     )
     .context("failed to encode token")?;
