@@ -8,6 +8,7 @@ use documents_hex::domain::{
     create::{MarkdownSubtype, NewDocumentMetadata, NewMarkdownTextDocument},
     models::DocumentError,
 };
+use documents_hex::domain::ports::create::DocumentCreationService as _;
 use entity_access::domain::{
     models::{EditAccessLevel, ViewAccessLevel},
     ports::EntityAccessService,
