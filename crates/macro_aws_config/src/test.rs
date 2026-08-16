@@ -145,3 +145,21 @@ fn test_internal_fetch_leaves_remote_url_untouched() {
     let result = transform_internal_url(input);
     assert_eq!(result, expected);
 }
+
+#[test]
+fn test_transform_public_url_rewrites_to_public_proxy() {
+    let input = "http://localstack:4566/static-file-storage/file/abc?x-id=PutObject";
+    let expected = "https://macro.keyframes.mov/s3/static-file-storage/file/abc?x-id=PutObject";
+
+    let result = transform_public_url(input, "https://macro.keyframes.mov");
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_internal_fetch_rewrites_public_s3_to_localstack() {
+    let input = "https://macro.keyframes.mov/s3/static-file-storage/file/abc";
+    let expected = "http://localstack:4566/static-file-storage/file/abc";
+
+    let result = transform_internal_url(input);
+    assert_eq!(result, expected);
+}

@@ -92,6 +92,16 @@
         reverse_proxy localstack:4566
     }
 
+    # ---- Browser-facing S3 presigned URLs (PFP / document uploads) ----
+    # Presigned URLs are minted for the LocalStack endpoint then rewritten to
+    # {S3_PUBLIC_BASE_URL}/s3/{bucket}/{key} so a remote browser can reach them.
+    # Route that path back to LocalStack, preserving the signed host header.
+    handle_path /s3/* {
+        reverse_proxy localstack:4566 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
     # ---- Frontend SPA (built at /app base) ----
     redir / /app/?{query} 302
     redir /app /app/ 308

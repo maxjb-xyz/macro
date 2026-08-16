@@ -10,6 +10,11 @@ maybe_env_var! {
     pub struct LocalAwsUrl;
 }
 
+maybe_env_var! {
+    #[derive(Clone)]
+    pub struct S3PublicBaseUrl;
+}
+
 /// Creates an S3 client
 #[cfg(feature = "s3")]
 pub async fn s3_client() -> aws_sdk_s3::Client {
@@ -80,11 +85,30 @@ fn transform_local_url(url: &str) -> String {
     format!("http://localhost:{port}/{asset}{path}{query}")
 }
 
+/// Rewrites a path-style LocalStack presigned URL into a public browser URL that
+/// routes through the self-host proxy's `/s3/*` path back to LocalStack.
+///
+/// Input (path-style, from the AWS SDK with `force_path_style`): e.g.
+/// `http://localstack:4566/{bucket}/{key}?{signature}`. Output:
+/// `{S3_PUBLIC_BASE_URL}/s3/{bucket}/{key}?{signature}`.
+fn transform_public_url(url: &str, public_base: &str) -> String {
+    let parsed = url::Url::parse(url).expect("valid url");
+    let path = parsed.path();
+    let query = parsed.query().map(|q| format!("?{q}")).unwrap_or_default();
+    format!("{}/s3{}{}", public_base.trim_end_matches('/'), path, query)
+}
+
 /// Transforms a localstack url into one that will work within the app
 /// For example, presigned urls for localstack come out as `http://{BUCKET_NAME}.localstack:{PORT}`
 /// but we need them to be formulated as `http://localhost:{PORT}/bucket-name`.
 pub fn transform_aws_url(url: &str) -> String {
     if is_local_aws() {
+        // Self-host: the browser is remote, so presigned URLs must point at the
+        // public proxy path (/s3/*) instead of the LocalStack endpoint, which
+        // only resolves on the host machine.
+        if let Some(public_base) = S3PublicBaseUrl::new() {
+            return transform_public_url(url, public_base.as_ref());
+        }
         return transform_local_url(url);
     }
     url.to_string()
@@ -106,6 +130,13 @@ fn transform_internal_url(url: &str) -> String {
     // host untouched.
     if host == "localhost" || host == "localstack" {
         return format!("http://localstack:{port}{path}{query}");
+    }
+
+    // Self-host: browser-facing URLs are minted as {public}/s3/{bucket}/{key}.
+    // Strip the /s3 prefix and rewrite to the internal LocalStack endpoint so
+    // server-side fetches don't loop back through the public proxy.
+    if let Some(rest) = path.strip_prefix("/s3/") {
+        return format!("http://localstack:{port}/{rest}{query}");
     }
 
     url.to_string()
