@@ -81,11 +81,23 @@ export const SERVER_HOSTS: Servers =
     ? selectLocalServers()
     : serverHostRemote;
 
+// Self-host exposes FusionAuth at the `auth.` subdomain (FUSIONAUTH_PUBLIC_URL).
+// The release image is built before the operator's domain is known, so derive
+// the SSO logout URL from the page's hostname at runtime. The client/tenant ids
+// are the deterministic kickstart values (see .env.selfhost.example).
+const SELF_HOST_FUSIONAUTH_CLIENT_ID = '22222222-2222-4222-8222-222222222222';
+const SELF_HOST_FUSIONAUTH_TENANT_ID = '11111111-1111-4111-8111-111111111111';
+
+function selfHostAuthLogoutUrl(): string {
+  const host = globalThis.location?.hostname ?? 'localhost';
+  return `https://auth.${host}/oauth2/logout?client_id=${SELF_HOST_FUSIONAUTH_CLIENT_ID}&tenantId=${SELF_HOST_FUSIONAUTH_TENANT_ID}`;
+}
+
 function proxyServers(): Servers | undefined {
   if (!proxyOrigin || !wsProxyOrigin) return undefined;
   return {
     'auth-service': `${proxyOrigin}/auth`,
-    'auth-logout': serverHostLocal['auth-logout'],
+    'auth-logout': selfHostAuthLogoutUrl(),
     'pdf-service': serverHostLocal['pdf-service'], // no local container
     'document-storage-service': `${proxyOrigin}/dss`,
     'websocket-service': `${wsProxyOrigin}/websocket`,

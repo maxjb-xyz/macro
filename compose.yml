@@ -237,7 +237,7 @@ services:
       FUSIONAUTH_APP_KICKSTART_FILE: /usr/local/fusionauth/kickstart/kickstart.json
       FUSIONAUTH_APP_MEMORY: 512M
       FUSIONAUTH_APP_RUNTIME_MODE: development
-      FUSIONAUTH_APP_URL: http://fusionauth:9011
+      FUSIONAUTH_APP_URL: ${FUSIONAUTH_PUBLIC_URL:-http://fusionauth:9011}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_SECURITY: ${SMTP_SECURITY:-NONE}
@@ -252,8 +252,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    expose:
-    - '9011'
+    ports:
+    - 127.0.0.1:9011:9011
     networks:
     - auth-internal
     - auth
