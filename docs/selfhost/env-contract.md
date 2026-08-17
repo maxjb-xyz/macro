@@ -98,7 +98,7 @@ catalog (`tooling/xtask/crates/xtask_local/src/local/resources.rs`). They are
 
 | Area | Keys | Class | Disabled/stubbed policy |
 | --- | --- | --- | --- |
-| Google login/Gmail | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET_KEY`, `GMAIL_GCP_QUEUE` | `integration key` | Leave blank to disable Google/Gmail where code permits. Do not claim Gmail-backed email works without OAuth consent, API scopes, Pub/Sub/watch, and HTTPS callbacks. |
+| Google login/Gmail | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET_KEY`, `GMAIL_GCP_QUEUE` | `integration key` | `GMAIL_GCP_QUEUE` blank disables Gmail push: links + backfill still work (watch skipped, cursor seeded from the Gmail profile), but live new-mail needs Pub/Sub push. Google login still requires OAuth consent, API scopes, and HTTPS callbacks. |
 | GitHub login/sync | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_IDP_ID`, `GITHUB_SYNC_APP_URL`, `GITHUB_SYNC_APP_CLIENT_ID`, `GITHUB_SYNC_APP_CLIENT_SECRET`, `GITHUB_INSTALLATION_STATE_SECRET`, `GITHUB_WEBHOOK_SECRET_KEY`, `GITHUB_SYNC_APP_PEM_SECRET_KEY` | `integration key` | Requires OAuth/GitHub App setup and webhook delivery. Keep blank or `CHANGEME_*` until configured. |
 | Stripe billing | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET_KEY` | `integration key` | Billing is not self-host-ready until the operator decides product/billing policy and webhook routing. |
 | Push notifications | `APPLE_BUNDLE_ID`, `SNS_FCM_PLATFORM_ARN`, `SNS_APNS_PLATFORM_ARN` | `integration key` | Mobile push stays disabled/stubbed without Apple/FCM/SNS or equivalent delivery. |

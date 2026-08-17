@@ -1,6 +1,6 @@
 //! Gmail mailbox-subscription capability implementation.
 
-use chrono::{TimeZone, Utc};
+use chrono::{Duration, TimeZone, Utc};
 
 use crate::domain::models::{AccessToken, EmailApiError, ProviderSubscription, SyncCursor};
 use crate::domain::ports::MailboxSubscriptionClient;
@@ -13,6 +13,25 @@ impl MailboxSubscriptionClient for GmailApiClientRepository {
         access_token: &AccessToken,
     ) -> Result<ProviderSubscription, EmailApiError> {
         let token = access_token.expose_secret();
+
+        // Self-host without a Pub/Sub topic: Gmail rejects `watch` with a 400
+        // when `topicName` is empty. Skip push registration and seed the sync
+        // cursor from the mailbox profile instead, so polling-only deployments
+        // still sync (just without real-time push). Operators who want push set
+        // `GMAIL_GCP_QUEUE` to a real Pub/Sub topic.
+        if !self.client.has_push_topic() {
+            let profile = self
+                .client
+                .get_profile(token)
+                .await
+                .map_err(map_gmail_error)?;
+
+            return Ok(ProviderSubscription::new(
+                SyncCursor::gmail(profile.history_id),
+                Utc::now() + Duration::hours(24),
+            ));
+        }
+
         let watch = match self.client.register_watch(token).await {
             Ok(watch) => watch,
             Err(error) if is_watch_conflict(&error) => {

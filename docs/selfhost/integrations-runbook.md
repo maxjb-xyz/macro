@@ -153,16 +153,20 @@ block sign-in with an account that is linked as a secondary inbox:
 `.env`). Create via the admin UI (Identity Providers → Add → OpenID Connect) or
 `POST /api/identity-provider` with the FusionAuth API key.
 
-### 1d. (Recommended) Gmail push via Google Cloud Pub/Sub
+### 1d. (Optional) Gmail push via Google Cloud Pub/Sub
 
-For near-real-time inbox sync, Macro watches Gmail via GCP Pub/Sub:
+For near-real-time inbox sync, Macro can watch Gmail via GCP Pub/Sub:
 
-1. Create a Pub/Sub **topic** and a **pull subscription** in the same GCP project.
-2. Grant the Google service account push to that topic, and configure the Gmail
-   API push notification (`watch`) to that topic.
-3. Set `GMAIL_GCP_QUEUE=<subscription name>` in `.env`.
+1. Create a Pub/Sub **topic** in the same GCP project.
+2. Grant `gmail-api-push@system.gserviceaccount.com` the **Pub/Sub Publisher**
+   role on that topic, so Gmail can publish to it.
+3. Create a **push subscription** on the topic that delivers to Macro's Gmail
+   webhook (`POST /gmail/webhook`), and expose that route publicly.
+4. Set `GMAIL_GCP_QUEUE=projects/<project-id>/topics/<topic-name>` in `.env`.
 
-Without Pub/Sub, backfill still works but live push notifications won't arrive.
+Without Pub/Sub, Gmail still links and backfills existing mail — the watch is
+skipped gracefully and the sync cursor is seeded from the Gmail profile — but
+live new-mail notifications won't arrive until a polling fallback is added.
 
 ---
 

@@ -102,6 +102,14 @@ impl GmailClient {
         }
     }
 
+    /// Returns true when a Gmail push-notification topic is configured.
+    ///
+    /// Without a topic, `register_watch` would be rejected by Gmail (400), so
+    /// callers should fall back to polling with a profile-derived sync cursor.
+    pub fn has_push_topic(&self) -> bool {
+        !self.subscription_topic.trim().is_empty()
+    }
+
     /// Lists the num_threads most recent threads for the user, optionally
     /// filtered to threads carrying all of the given Gmail label ids
     /// (an empty slice applies no filter).

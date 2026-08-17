@@ -126,3 +126,39 @@ async fn retry_failure_is_returned_without_another_recovery_attempt() {
     assert!(matches!(error, EmailApiError::Transient { .. }));
     assert_eq!(calls.load(Ordering::SeqCst), 2);
 }
+
+#[tokio::test]
+async fn empty_topic_skips_watch_and_seeds_cursor_from_profile() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/users/me/profile"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"emailAddress":"person@example.com","messagesTotal":1,"threadsTotal":1,"historyId":"1234"}"#,
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+    // The watch endpoint must never be called when no topic is configured.
+    Mock::given(method("POST"))
+        .and(path("/users/me/watch"))
+        .respond_with(ResponseTemplate::new(400))
+        .expect(0)
+        .mount(&server)
+        .await;
+
+    let repository = GmailApiClientRepository::new(GmailClient::new_with_urls(
+        String::new(),
+        server.uri(),
+        server.uri(),
+        server.uri(),
+        "audience".to_string(),
+    ));
+
+    let subscription = repository
+        .subscribe(&AccessToken::new("token"))
+        .await
+        .unwrap();
+
+    assert_eq!(subscription.cursor, SyncCursor::gmail("1234"));
+    assert!(subscription.expires_at > Utc::now());
+}
