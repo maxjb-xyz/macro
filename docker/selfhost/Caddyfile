@@ -27,6 +27,13 @@
     handle_path /auth/* {
         reverse_proxy authentication-service:8080
     }
+    # OAuth redirect callbacks are hit directly by the browser (FusionAuth
+    # redirects to /oauth/redirect; providers to /oauth2/{provider}/callback) —
+    # no /auth prefix — so forward the full path (no strip) to the auth service.
+    @oauth path /oauth/* /oauth2/*
+    handle @oauth {
+        reverse_proxy authentication-service:8080
+    }
     @connection_gateway path /connection-gateway /connection-gateway/*
     handle @connection_gateway {
         uri strip_prefix /connection-gateway
