@@ -95,7 +95,16 @@ export const SERVER_HOSTS: Servers =
 
 function selfHostAuthLogoutUrl(): string {
   const host = globalThis.location?.hostname ?? 'localhost';
-  return `https://auth.${host}/oauth2/logout?client_id=${SELF_HOST_FUSIONAUTH_CLIENT_ID}&tenantId=${SELF_HOST_FUSIONAUTH_TENANT_ID}`;
+  // Cloudflare's free Universal SSL wildcard covers only ONE label below the
+  // zone apex (e.g. *.keyframes.mov -> macro.keyframes.mov), so a multi-level
+  // host like auth.macro.keyframes.mov has no matching cert and HTTPS fails
+  // with a TLS handshake error ("uses an unsupported protocol"). Derive the
+  // auth host as auth.<registrable-domain>: strip one leading label when the
+  // hostname has 3+ labels. Keep FUSIONAUTH_PUBLIC_URL in sync (it must be the
+  // same single-level auth.<registrable-domain>).
+  const labels = host.split('.');
+  const parent = labels.length >= 3 ? labels.slice(1).join('.') : host;
+  return `https://auth.${parent}/oauth2/logout?client_id=${SELF_HOST_FUSIONAUTH_CLIENT_ID}&tenantId=${SELF_HOST_FUSIONAUTH_TENANT_ID}`;
 }
 
 function proxyServers(): Servers | undefined {

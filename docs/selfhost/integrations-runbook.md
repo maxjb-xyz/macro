@@ -62,6 +62,11 @@ scopes the IdP requests.
    - `https://<auth host>/oauth2/callback` — FusionAuth's OpenID Connect IdP
      callback (`{FUSIONAUTH_PUBLIC_URL}/oauth2/callback`). Confirm the exact path
      in FusionAuth → Identity Providers → your IdP → OAuth2 callback URL.
+
+   The `<auth host>` must be a **single-level subdomain** (e.g. `auth.example.com`,
+   not `auth.app.example.com`). Cloudflare's free Universal SSL wildcard
+   `*.example.com` covers only one label, so a two-level host has no cert and
+   fails HTTPS with a TLS handshake error ("uses an unsupported protocol").
 3. Note the **Client ID** and **Client secret** (`GOCSPX-…`).
 
 ### 1b. Set env vars in `.env`
