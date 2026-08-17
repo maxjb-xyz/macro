@@ -76,7 +76,7 @@ function resolveProxyOrigin(configured: string | undefined) {
   }
 }
 
-// Self-host exposes FusionAuth at the `auth.` subdomain (FUSIONAUTH_PUBLIC_URL).
+// Self-host exposes FusionAuth at the `macroauth.` subdomain (FUSIONAUTH_PUBLIC_URL).
 // The release image is built before the operator's domain is known, so derive
 // the SSO logout URL from the page's hostname at runtime. The client/tenant ids
 // are the deterministic kickstart values (see .env.selfhost.example).
@@ -97,14 +97,14 @@ function selfHostAuthLogoutUrl(): string {
   const host = globalThis.location?.hostname ?? 'localhost';
   // Cloudflare's free Universal SSL wildcard covers only ONE label below the
   // zone apex (e.g. *.keyframes.mov -> macro.keyframes.mov), so a multi-level
-  // host like auth.macro.keyframes.mov has no matching cert and HTTPS fails
+  // host like macroauth.macro.keyframes.mov has no matching cert and HTTPS fails
   // with a TLS handshake error ("uses an unsupported protocol"). Derive the
-  // auth host as auth.<registrable-domain>: strip one leading label when the
-  // hostname has 3+ labels. Keep FUSIONAUTH_PUBLIC_URL in sync (it must be the
-  // same single-level auth.<registrable-domain>).
+  // auth host as macroauth.<registrable-domain>: strip one leading label when
+  // the hostname has 3+ labels. Keep FUSIONAUTH_PUBLIC_URL in sync (it must be
+  // the same single-level macroauth.<registrable-domain>).
   const labels = host.split('.');
   const parent = labels.length >= 3 ? labels.slice(1).join('.') : host;
-  return `https://auth.${parent}/oauth2/logout?client_id=${SELF_HOST_FUSIONAUTH_CLIENT_ID}&tenantId=${SELF_HOST_FUSIONAUTH_TENANT_ID}`;
+  return `https://macroauth.${parent}/oauth2/logout?client_id=${SELF_HOST_FUSIONAUTH_CLIENT_ID}&tenantId=${SELF_HOST_FUSIONAUTH_TENANT_ID}`;
 }
 
 function proxyServers(): Servers | undefined {
