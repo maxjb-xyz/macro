@@ -85,9 +85,10 @@ async fn poll_once(db: &PgPool, sqs: &SQS, email_api: &GmailApi) {
 
 /// Returns the ids of Gmail links that are active and not awaiting reauth.
 ///
-/// Uses a runtime query (not a `query_scalar!`/`query_as!` macro) so the SQL is
-/// not subject to the checked-in `.sqlx` offline cache, which would need a live
-/// database to regenerate for a new statement.
+/// Uses a runtime query (not a `query_scalar!` macro) so the SQL is not subject
+/// to the checked-in `.sqlx` offline cache, which would need a live database to
+/// regenerate for a new statement.
+#[allow(clippy::disallowed_methods, reason = "runtime query avoids regenerating the .sqlx cache in the fork")]
 async fn fetch_active_gmail_link_ids(pool: &PgPool) -> Result<Vec<Uuid>, sqlx::Error> {
     sqlx::query_scalar(
         "SELECT id FROM email_links \
