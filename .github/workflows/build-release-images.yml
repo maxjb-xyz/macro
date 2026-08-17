@@ -103,11 +103,9 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:sha-${{ github.sha }}
             ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:latest
-          # NOTE: the Rust Dockerfile's --mount target cache does not persist
-          # across CI runs; only the image layer cache does. These are slow
-          # first builds (~15-30 min per service). Switching the generic
-          # docker/Dockerfile to cargo-chef (as Dockerfile.search_processing_service
-          # already does) is the follow-up to cut rebuild cost.
+          # cargo-chef (docker/Dockerfile) turns the dependency compile into a
+          # normal image layer so `type=gha` caches it; rebuilds only recompile
+          # changed source. The first build that warms the cache is still slow.
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
