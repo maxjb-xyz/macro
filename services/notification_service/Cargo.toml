@@ -65,6 +65,7 @@ regex = { workspace = true }
 secretsmanager_client = { path = "../../crates/secretsmanager_client" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+ses_client = { path = "../../crates/ses_client" }
 sha2 = { workspace = true }
 sns_client = { path = "../../crates/sns_client" }
 sqlx = { workspace = true }

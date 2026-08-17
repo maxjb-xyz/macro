@@ -227,7 +227,13 @@ pub async fn main() -> anyhow::Result<()> {
         voip_bundle_id: None,
     };
 
-    let ses_client = aws_sdk_sesv2::Client::new(&aws_config);
+    // Route outbound notification email through ses_client's transport selector:
+    // SMTP (Mailpit / real SMTP) when SMTP_HOST is set, else SES. Keeps digest
+    // emails working on self-host without a LocalStack SES license.
+    let ses_client = ses_client::Ses::from_env(
+        aws_sdk_sesv2::Client::new(&aws_config),
+        &config.environment.to_string(),
+    );
     let email_adapter = EmailAdapter::new(ses_client, crate::env::SENDER_ADDRESS.clone());
 
     let redis_multiplexed_conn = redis_client

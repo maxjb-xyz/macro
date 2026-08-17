@@ -83,6 +83,24 @@ impl EmailServiceOps for aws_sdk_sesv2::Client {
     }
 }
 
+/// Routes notification email through `ses_client`'s transport selector: SMTP
+/// (Mailpit in local, a real SMTP host in production) when `SMTP_HOST` is set,
+/// otherwise SES. This is what keeps notification digests deliverable on
+/// self-host without a LocalStack SES license.
+impl EmailServiceOps for ses_client::SesClient {
+    async fn send_email(
+        &self,
+        from_email: &str,
+        to_email: &str,
+        subject: &str,
+        html_body: &str,
+    ) -> Result<(), Report> {
+        ses_client::SesClient::send_email(self, from_email, to_email, subject, html_body)
+            .await
+            .map_err(|e| rootcause::report!("email send failed: {}", e))
+    }
+}
+
 impl<E: EmailServiceOps + Send + Sync + 'static> EmailSender for EmailAdapter<E> {
     async fn send_email(
         &self,
