@@ -68,6 +68,11 @@ pub struct Config {
     #[macro_config_default(true)]
     pub gmail_sync_enabled: bool,
 
+    /// Interval (seconds) between Gmail inbox polls when Pub/Sub push is
+    /// disabled (empty `GMAIL_GCP_QUEUE`). New mail still arrives, just delayed.
+    #[macro_config_default(300)]
+    pub gmail_poll_interval_secs: u64,
+
     /// Apollo.io API key for CRM enrichment. Locally this is the key
     /// itself; in deployed envs it's the name of the Secrets Manager
     /// secret holding it (resolved at startup). Empty disables enrichment.

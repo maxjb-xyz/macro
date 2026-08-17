@@ -7,6 +7,8 @@ pub mod calendar_outbox;
 /// Access-token adapter for user-initiated calendar mutations.
 pub mod calendar_tokens;
 pub mod config;
+/// Gmail inbox polling fallback for deployments without Pub/Sub push.
+pub mod gmail_polling;
 /// Outbound infrastructure adapters for email provider capabilities.
 pub mod outbound;
 pub mod pubsub;

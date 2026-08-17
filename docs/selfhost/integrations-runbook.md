@@ -164,9 +164,9 @@ For near-real-time inbox sync, Macro can watch Gmail via GCP Pub/Sub:
    webhook (`POST /gmail/webhook`), and expose that route publicly.
 4. Set `GMAIL_GCP_QUEUE=projects/<project-id>/topics/<topic-name>` in `.env`.
 
-Without Pub/Sub, Gmail still links and backfills existing mail — the watch is
-skipped gracefully and the sync cursor is seeded from the Gmail profile — but
-live new-mail notifications won't arrive until a polling fallback is added.
+Without Pub/Sub, Gmail falls back to polling: links and backfill work, and new
+mail is picked up every `GMAIL_POLL_INTERVAL_SECS` (default 300) by a background
+poller. Pub/Sub push is only needed for near-real-time delivery.
 
 ---
 

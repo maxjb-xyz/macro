@@ -306,6 +306,23 @@ async fn main() -> anyhow::Result<()> {
         RateBudget::Backfill,
     );
 
+    // Gmail polling fallback: when no Pub/Sub topic is configured, periodically
+    // trigger an inbox sync for active links so new mail still arrives (delayed,
+    // not real-time). Push deployments get the webhook instead.
+    if config.gmail_sync_enabled && config.gmail_gcp_queue.as_ref().trim().is_empty() {
+        worker_tracker.spawn(email_service::gmail_polling::run(
+            db.clone(),
+            sqs_client.clone(),
+            email_api_live.clone(),
+            Duration::from_secs(config.gmail_poll_interval_secs),
+            worker_cancellation_token.clone(),
+        ));
+        tracing::info!(
+            interval_secs = config.gmail_poll_interval_secs,
+            "Gmail inbox polling started (no Pub/Sub topic configured)"
+        );
+    }
+
     let sfs_client = StaticFileServiceClient::new(
         config.internal_api_key.to_string(),
         StaticFileServiceUrl::new()?.to_string(),
