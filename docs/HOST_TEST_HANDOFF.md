@@ -38,8 +38,8 @@ complete these checks in order:
    exist before browser testing.
 6. Review `compose-logs.out` for startup errors or crash loops.
 7. If `--keep-stack` was used, run the browser checks from
-   `docs/SELF_HOSTING_FORK.md` and record results in `failure-log.md`.
-8. Review `docs/SELF_HOSTING_INTEGRATIONS.md` and classify any integration
+   `docs/selfhost/smoke-test.md` and record results in `failure-log.md`.
+8. Review `docs/selfhost/integrations.md` and classify any integration
    failure as local infrastructure, local emulation, missing external
    credentials, or an intentionally stubbed provider.
 9. Confirm the stack was reclaimed (`compose-down.exit` is `0`) unless the

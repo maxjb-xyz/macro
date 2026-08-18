@@ -14,7 +14,7 @@ A self-host smoke run must prove four things:
 The smoke is valid for the integration class under test:
 
 - Local disposable: `.env.example`, Mailpit, LocalStack, and development images are acceptable.
-- Production-ish single host: operator `.env` or `.env.selfhost`, real public HTTPS URLs, real secrets, real SMTP or an explicitly disabled-email policy, durable object storage, and the hardening gates in `production-hardening-checklist.md`.
+- Production-ish single host: operator `.env` or `.env.selfhost`, real public HTTPS URLs, real secrets, real SMTP or an explicitly disabled-email policy, durable object storage, and the hardening gates in `production-checklist.md`.
 
 ## Non-goals
 
@@ -199,7 +199,7 @@ A restore drill is not accepted until this smoke passes on the restored host wit
 
 ## Disabled integration checks
 
-For every integration classified as `external-required` or `stubbed` in `docs/SELF_HOSTING_INTEGRATIONS.md`:
+For every integration classified as `external-required` or `stubbed` in `docs/selfhost/integrations.md`:
 
 - If disabled, the UI should not advertise the feature as ready, or the action should fail closed with a clear operator/user-safe error.
 - If enabled, the smoke must include a minimal provider-specific callback/webhook/API path using the canonical HTTPS host.

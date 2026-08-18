@@ -1,8 +1,9 @@
-# Self-host environment contract
+# Configuration
 
-This document is the operator contract for `.env.selfhost.example`. It replaces
-local-only stubs with explicit production-ish configuration classes without
-committing real secrets.
+Every environment variable for a self-hosted deployment, and what to put in it.
+Start from `.env.selfhost.example` (copy it to `.env.selfhost`) and replace the
+placeholders with real values. The tables below group the variables and mark
+which are secrets, which are public URLs, and which you can leave at defaults.
 
 ## Classification model
 
@@ -157,5 +158,3 @@ This contract was derived from:
 - `docker/docker-compose-databases.yml`
 - `infra/stacks/fusionauth-instance/docker-compose.yml`
 - `tooling/xtask/crates/xtask_local/src/local/local_env.rs`
-- `docs/SELF_HOSTING_INTEGRATIONS.md`
-- `docs/SELF_HOSTING_DURABLE.md`

@@ -9,7 +9,7 @@
 # Also caps the ai-editing-worker's Node heap. That worker runs a Cloudflare
 # Worker via `wrangler dev` (a dev server, not a production runtime), which is
 # memory-hungry; NODE_OPTIONS reins in the wrangler process. The workerd runtime
-# it spawns is the remaining footprint (see docs/selfhost/known-issues.md).
+# it spawns is the remaining footprint.
 services:
   kafka:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.6

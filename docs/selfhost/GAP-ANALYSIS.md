@@ -112,7 +112,7 @@ configured they now degrade cleanly (see item 3 above): SSO/link endpoints
 return `INTEGRATION_NOT_CONFIGURED` (404), `/email/init` returns
 `GMAIL_NOT_CONFIGURED` (400), and `/capabilities` drives UI hiding. Real
 activation still requires the operator to supply credentials — the step-by-step
-runbook is **docs/selfhost/integrations-runbook.md**. Identity providers are
+runbook is **docs/selfhost/integrations.md**. Identity providers are
 auto-provisioned by the `fusionauth_provision_idps` one-shot service
 (config-gated, idempotent; see the runbook).
 

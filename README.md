@@ -203,13 +203,12 @@ Deeper reading: [key concepts](https://docs.macro.com/concepts/blocks) covers bl
 
 To run the full app on your machine, follow [Running locally](docs/RUNNING_LOCALLY.md).
 
-This fork is also maintaining a Docker Compose-first self-hosting path; see
-[Self-hosted fork maintenance](docs/SELF_HOSTING_FORK.md) for the fork strategy,
-and the [self-host docs index](docs/selfhost/README.md) for quick start,
-production hardening, integrations, backup/restore, and update/rollback.
-
-For a one-command single-host deploy, see the
-[MVP quick start](docs/selfhost/MVP-QUICKSTART.md).
+This fork also maintains a Docker Compose-first self-hosting path. See the
+[self-host docs index](docs/selfhost/README.md) for the quick start, production
+checklist, integrations, backup/restore, and update/rollback. For a
+one-command single-host deploy, see the
+[quick start](docs/selfhost/quickstart.md). Fork maintenance lives in
+[maintaining.md](docs/selfhost/maintaining.md).
 
 To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

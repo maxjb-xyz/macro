@@ -2,7 +2,7 @@
 
 How to apply a new Macro release to a single-host self-host deployment and roll
 back to a known-good state if it breaks. Uses the pinned-image + Compose-overlay
-model from `docs/selfhost/published-release-images.md`.
+model from `docs/selfhost/release-images.md`.
 
 ## Model
 
@@ -64,7 +64,7 @@ waits for healthy services.
 
 ## 4. Smoke test
 
-Run `docs/selfhost/smoke-test-spec.md`, or at minimum confirm:
+Run `docs/selfhost/smoke-test.md`, or at minimum confirm:
 
 ```bash
 docker compose ps \

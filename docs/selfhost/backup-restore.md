@@ -1,6 +1,8 @@
-# Self-host persistence, backup, and restore
+# Back up and restore
 
-Status: first operator contract for the single-node Docker Compose appliance. It is intentionally conservative: stop writers, copy data off-host, verify restore on a separate host, and never treat Compose volumes as backups.
+How to back up and restore a single-node Macro deployment. The approach is
+conservative on purpose: stop writers, copy data off-host, verify a restore on
+a separate host, and never treat Compose volumes as backups.
 
 ## Scope
 
@@ -17,10 +19,10 @@ Current rendered named volumes:
 | Macro Postgres | `postgres` | `db` | `macro_postgres_data` | `/var/lib/postgresql` | required | Primary relational state for Macro services. Prefer logical dumps plus volume snapshots. |
 | Redis | `redis` | `cache` | `macro_redis_data` | `/data` | conditional | Redis is partly cache-like, but losing it may lose transient queues/session/last-online state. Back it up for durable appliances until every Redis use is classified as rebuildable. |
 | OpenSearch | `search` | `opensearch_data` | `macro_opensearch_data` | `/usr/share/opensearch/data` | recommended | Search index can theoretically be rebuilt from source systems only after a tested reindex runbook exists. Back it up for now. |
-| Kafka | `kafka` | `kafka_data` | `macro_kafka_data` | `/var/lib/kafka/data` | recommended | Contains broker metadata, offsets, and retained topic data. Required for no-message-loss restore. |
+| Kafka (Redpanda) | `kafka` | `kafka_data` | `macro_kafka_data` | `/var/lib/redpanda/data` | recommended | Contains broker metadata, offsets, and retained topic data. Required for no-message-loss restore. |
 | FusionAuth database | `db` | `db_data` | `fusionauth_db_data` | `/var/lib/postgresql/data` | required | FusionAuth identity, users, tenants, applications, and API-key state. |
 | FusionAuth config | `fusionauth` | `fusionauth_config` | `fusionauth_config` | `/usr/local/fusionauth/config` | required | FusionAuth runtime config outside the DB. |
-| LocalStack/object data | `localstack` | none today | none today | n/a | unsupported for durable data | The current service has only the init-script bind mount. S3/SQS/DynamoDB state is ephemeral unless a future overlay adds a LocalStack data volume. Production object data must use operator-owned S3-compatible storage with its own backup/versioning policy. |
+| LocalStack object data | `localstack` | `localstack_data` | `macro_localstack_data` | `/persisted-data` | recommended | S3/SQS/DynamoDB state (durable LocalStack profile). Prefer real S3-compatible storage with versioning for production. |
 
 Bind mounts observed in the rendered stack are source/config mounts, not durable application state, except that local worker services may write development artifacts into the repository checkout. They are not a substitute for backing up service-owned data stores.
 
@@ -42,7 +44,9 @@ Use both logical exports and volume archives:
 
 3. Object storage backups
    - For production, use real S3-compatible object storage with bucket versioning, lifecycle/retention, and provider backup controls.
-   - If a future LocalStack durable profile is added, it must introduce an explicit data volume and add that volume to the backup manifest before being considered survivable.
+   - The self-host LocalStack profile stores S3/SQS/DynamoDB in the
+     `macro_localstack_data` volume; include it in backups, but prefer real
+     object storage with versioning for production.
 
 4. Secrets and env
    - Back up operator-managed secret material separately from repository files: `.env`, reverse-proxy secrets, OAuth/FusionAuth client secrets, SMTP credentials, object-storage credentials, signing keys, and any external-provider configuration.
@@ -91,10 +95,10 @@ Fallback option: if volume restore fails but logical dumps are healthy, restore 
 
 ## Upgrade safety rules
 
-- Take a fresh backup and complete a restore drill before image, schema, Compose, or env-contract upgrades.
+- Take a fresh backup and complete a restore drill before image, schema, Compose, or configuration upgrades.
 - Never run `docker compose down -v` for routine maintenance. It deletes named volumes.
 - Pin service images for durable deployments; do not upgrade from floating tags without a rollback point.
-- Do not change Kafka `CLUSTER_ID` when reusing `macro_kafka_data`; a mismatch can make the broker reject existing data.
+- Do not change the Redpanda node-id (`--node-id 0`) when reusing `macro_kafka_data`; a mismatch makes the broker not find its existing data.
 - Treat Postgres major-version upgrades as data migrations, not container replacements. Use logical dump/restore or the official upgrade path.
 - Treat OpenSearch major-version upgrades as index migrations with a rollback plan.
 - Keep FusionAuth app and DB versions compatible; test kickstart/API readiness after restore.

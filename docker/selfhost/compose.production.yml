@@ -10,7 +10,7 @@
 #
 # Resource limits are CONSERVATIVE DEFAULT CEILINGS, not reservations: they cap
 # runaway processes but sit well above idle/steady-state usage. Tune them for
-# your dataset size and concurrency (see docs/selfhost/production-hardening-checklist.md).
+# your dataset size and concurrency (see docs/selfhost/production-checklist.md).
 
 # Fixed Compose project name: upstream's base/databases files hard-code `name: macro`,
 # but this self-host distribution must keep its own project namespace so a bare
