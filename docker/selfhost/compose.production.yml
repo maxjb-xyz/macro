@@ -12,6 +12,12 @@
 # runaway processes but sit well above idle/steady-state usage. Tune them for
 # your dataset size and concurrency (see docs/selfhost/production-hardening-checklist.md).
 
+# Fixed Compose project name: upstream's base/databases files hard-code `name: macro`,
+# but this self-host distribution must keep its own project namespace so a bare
+# `docker compose up -d` targets this stack (container names `macro-selfhost-*`)
+# instead of colliding with upstream's `macro-*`. Merged after the base files, so it wins.
+name: macro-selfhost
+
 x-logging: &default-logging
   driver: json-file
   options:

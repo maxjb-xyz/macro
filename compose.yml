@@ -21,7 +21,7 @@
 # Release-image source: MACRO_RELEASE_IMAGE_REGISTRY + MACRO_RELEASE_IMAGE_TAG
 # in the operator's .env (defaults in .env.example).
 # ============================================================================
-name: macro
+name: macro-selfhost
 services:
   postgres:
     image: pgvector/pgvector:pg18
