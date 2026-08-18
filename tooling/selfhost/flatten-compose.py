@@ -17,7 +17,8 @@ Source merge order (later wins):
   3. docker/docker-compose.yml
   4. docker/selfhost/compose.frontend.yml
   5. docker/selfhost/compose.production.yml
-  6. docker/selfhost/compose.release-images.yml
+  6. docker/selfhost/compose.light-infra.yml
+  7. docker/selfhost/compose.release-images.yml
 
 `!reset null` / `!reset []` in a later source means "drop this key" (revert to
 Compose default): `build` is removed (pull, don't build), `command` is removed
@@ -37,6 +38,7 @@ SOURCES = [
     "docker/docker-compose.yml",
     "docker/selfhost/compose.frontend.yml",
     "docker/selfhost/compose.production.yml",
+    "docker/selfhost/compose.light-infra.yml",
     "docker/selfhost/compose.release-images.yml",
 ]
 
@@ -57,6 +59,7 @@ HEADER = """# ==================================================================
 #   docker/docker-compose.yml                     (upstream base, untouched)
 #   docker/selfhost/compose.frontend.yml          (proxy + durable storage)
 #   docker/selfhost/compose.production.yml        (restart/logging/limits)
+#   docker/selfhost/compose.light-infra.yml       (Redpanda swap + node heap caps)
 #   docker/selfhost/compose.release-images.yml    (GHCR image pins)
 #
 # Release-image source: MACRO_RELEASE_IMAGE_REGISTRY + MACRO_RELEASE_IMAGE_TAG

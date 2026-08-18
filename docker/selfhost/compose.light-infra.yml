@@ -1,0 +1,73 @@
+# Lighter-infra overlay for self-host (merged by flatten-compose.py).
+#
+# Swaps the single-node JVM Kafka broker for Redpanda: Kafka-API compatible, a
+# single binary, no JVM, and roughly a tenth of the memory. The Rust services
+# keep talking the Kafka protocol unchanged (KAFKA_BROKERS is still
+# kafka:29092), so this is a pure image + command swap with no code changes and
+# no divergence from upstream.
+#
+# Also caps the ai-editing-worker's Node heap. That worker runs a Cloudflare
+# Worker via `wrangler dev` (a dev server, not a production runtime), which is
+# memory-hungry; NODE_OPTIONS reins in the wrangler process. The workerd runtime
+# it spawns is the remaining footprint (see docs/selfhost/known-issues.md).
+services:
+  kafka:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
+    # Redpanda runs as a non-root user by default and needs to write its data
+    # dir; run as root so the named volume (previously Kafka's) stays writable.
+    user: root
+    environment: !reset null
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp 1
+      - --memory 512M
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092
+      - --advertise-kafka-addr PLAINTEXT://kafka:29092
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster info --brokers localhost:29092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    volumes:
+      - kafka_data:/var/lib/redpanda/data
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+  kafka_topics:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
+    # The image's entrypoint runs `rpk <command>`, so this must be an rpk
+    # subcommand (a shell loop would become `rpk sh -ec ...` and fail). Redpanda
+    # also auto-creates topics on first use, so re-running is safe.
+    command:
+      - topic
+      - create
+      - macro.bots
+      - macro.calls
+      - macro.channels
+      - macro.chats
+      - macro.documents
+      - macro.email
+      - macro.example
+      - macro.mentions
+      - macro.notifications
+      - macro.projects
+      - macro.properties
+      - macro.soup
+      - macro.teams
+      - macro.webhooks
+      - -r
+      - "1"
+      - -p
+      - "1"
+      - --brokers
+      - kafka:29092
+  ai_editing_worker:
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384

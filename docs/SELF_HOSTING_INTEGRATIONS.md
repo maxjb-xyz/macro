@@ -23,7 +23,7 @@ as the operator contract for replacing stubs with real providers.
 | --- | --- | --- | --- |
 | Postgres/pgvector | `local` | `DATABASE_URL`, `DATABASE_URL_READONLY`, `MACRO_DB_URL` | Durable deployments must back up Macro and FusionAuth databases separately. |
 | Redis | `local` | `REDIS_URI`, `REDIS_HOST`, `LAST_ONLINE_REDIS_URI`, `DOCUMENT_STORAGE_SERVICE_REDIS_URI` | Used for cache, presence, rate limiting, and service coordination. |
-| Kafka | `local` | `KAFKA_BROKERS` | Compose uses single-node KRaft. Production sizing and retention are operator decisions. |
+| Kafka (Redpanda) | `local` | `KAFKA_BROKERS` | Compose runs single-node Redpanda (Kafka-API compatible, no JVM) instead of apache/kafka; `KAFKA_BROKERS` stays `kafka:29092`. Production sizing and retention are operator decisions. |
 | OpenSearch | `local` | `OPENSEARCH_URL`, `OPENSEARCH_USERNAME`, `OPENSEARCH_PASSWORD` | Local security is disabled; production needs auth/TLS/resource sizing. |
 | S3-compatible storage | `local-emulated` | `LOCAL_AWS_URL`, `AWS_*`, `DOCUMENT_STORAGE_BUCKET`, `ATTACHMENT_BUCKET`, `DOCX_DOCUMENT_UPLOAD_BUCKET`, `STATIC_STORAGE_BUCKET`, `UPLOAD_STAGING_BUCKET` | Compose starts LocalStack and provisions the local buckets. Long-lived deployments should use managed S3 or durable S3-compatible storage with retention and restore drills. |
 | SQS/DynamoDB-style async infra | `local-emulated` | `OVERRIDE_*_QUEUE`, `*_TABLE`, `DOCUMENT_UPLOAD_FINALIZER_QUEUE_URL`, `GMAIL_GCP_QUEUE` | Compose starts LocalStack and provisions local queues/tables. Real deployments need queue creation, dead-letter policy, and retry/visibility settings. |

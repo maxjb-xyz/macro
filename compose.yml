@@ -15,6 +15,7 @@
 #   docker/docker-compose.yml                     (upstream base, untouched)
 #   docker/selfhost/compose.frontend.yml          (proxy + durable storage)
 #   docker/selfhost/compose.production.yml        (restart/logging/limits)
+#   docker/selfhost/compose.light-infra.yml       (Redpanda swap + node heap caps)
 #   docker/selfhost/compose.release-images.yml    (GHCR image pins)
 #
 # Release-image source: MACRO_RELEASE_IMAGE_REGISTRY + MACRO_RELEASE_IMAGE_TAG
@@ -103,32 +104,19 @@ services:
           memory: 512m
           cpus: '1.0'
   kafka:
-    image: apache/kafka:3.9.1
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-      CLUSTER_ID: TWFjcm9Mb2NhbEthZmthMQ
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
     healthcheck:
-      test: /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1
+      test:
+      - CMD-SHELL
+      - rpk cluster info --brokers localhost:29092 >/dev/null 2>&1
       interval: 5s
       timeout: 10s
-      retries: 20
+      retries: 30
     expose:
     - '29092'
     - '9092'
     volumes:
-    - kafka_data:/var/lib/kafka/data
+    - kafka_data:/var/lib/redpanda/data
     networks:
     - databases
     restart: unless-stopped
@@ -141,17 +129,48 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2g
-          cpus: '2.0'
+          memory: 512m
+          cpus: '1.0'
+    user: root
+    command:
+    - redpanda
+    - start
+    - --overprovisioned
+    - --smp 1
+    - --memory 512M
+    - --reserve-memory 0M
+    - --node-id 0
+    - --check=false
+    - --kafka-addr PLAINTEXT://0.0.0.0:29092
+    - --advertise-kafka-addr PLAINTEXT://kafka:29092
   kafka_topics:
-    image: apache/kafka:3.9.1
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
     depends_on:
       kafka:
         condition: service_healthy
     command:
-    - sh
-    - -ec
-    - "topics='\n  macro.bots\n  macro.calls\n  macro.channels\n  macro.chats\n  macro.documents\n  macro.email\n  macro.example\n  macro.mentions\n  macro.notifications\n  macro.projects\n  macro.properties\n  macro.soup\n  macro.teams\n  macro.webhooks\n'\n\n/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list >/dev/null\n\nfor topic in $$topics; do\n  /opt/kafka/bin/kafka-topics.sh \\\n    --bootstrap-server kafka:29092 \\\n    --create \\\n    --if-not-exists \\\n    --topic \"$$topic\" \\\n    --partitions \"$${KAFKA_TOPIC_PARTITIONS:-1}\" \\\n    --replication-factor 1\ndone\n\nfor topic in $$topics; do\n  attempts=0\n  until /opt/kafka/bin/kafka-topics.sh \\\n    --bootstrap-server kafka:29092 \\\n    --describe \\\n    --topic \"$$topic\" >/dev/null 2>&1; do\n    attempts=$$((attempts + 1))\n    if [ \"$$attempts\" -ge 30 ]; then\n      echo \"Kafka topic was not visible after creation: $$topic\" >&2\n      exit 1\n    fi\n    sleep 1\n  done\ndone\n"
+    - topic
+    - create
+    - macro.bots
+    - macro.calls
+    - macro.channels
+    - macro.chats
+    - macro.documents
+    - macro.email
+    - macro.example
+    - macro.mentions
+    - macro.notifications
+    - macro.projects
+    - macro.properties
+    - macro.soup
+    - macro.teams
+    - macro.webhooks
+    - -r
+    - '1'
+    - -p
+    - '1'
+    - --brokers
+    - kafka:29092
     networks:
     - databases
   search:
@@ -1064,6 +1083,8 @@ services:
         limits:
           memory: 1g
           cpus: '1.0'
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
     image: ${MACRO_RELEASE_IMAGE_REGISTRY}/ai-editing-worker:${MACRO_RELEASE_IMAGE_TAG}
   analytics_proxy:
     env_file:
