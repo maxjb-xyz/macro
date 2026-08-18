@@ -2,6 +2,7 @@ name: build-release-images
 
 on:
   push:
+    branches: ['main']
     tags: ['v*']
   workflow_dispatch:
 
@@ -14,6 +15,12 @@ env:
 
 jobs:
   build-and-push:
+    # Build on branch pushes (main) and workflow_dispatch only. Tag pushes are
+    # handled by the version-tag job below, which just re-tags the already-built
+    # :sha-<sha> image. Building on main keeps the type=gha cache scoped to
+    # refs/heads/main, so every subsequent tag can restore it (GitHub's Actions
+    # cache is ref-isolated; a tag-scoped cache is never reused by the next tag).
+    if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -106,13 +113,16 @@ jobs:
           # cargo-chef (docker/Dockerfile) turns the dependency compile into a
           # normal image layer so `type=gha` caches it; rebuilds only recompile
           # changed source. The first build that warms the cache is still slow.
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Per-image scope stops the 20 matrix jobs from overwriting each
+          # other's cache (GitHub caps the Actions cache at 10 GB, evicting LRU).
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-  # Tag versioned images only (no :latest) when a v* tag is pushed.
+  # Tag versioned images only (no :latest) when a v* tag is pushed. The images
+  # were already built + pushed as :sha-<sha> by the main-branch build; this job
+  # only re-tags, so no rebuild and no cache involvement.
   version-tag:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-and-push
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -152,6 +162,15 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           SHA_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:sha-${{ github.sha }}"
           VER_IMAGE="${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:${TAG}"
+          # :sha-<sha> is pushed by the main-branch build. Wait briefly in case
+          # that run is still finishing (tag pushed right after the commit).
+          for i in $(seq 1 30); do
+            if docker pull "$SHA_IMAGE" 2>/dev/null; then
+              break
+            fi
+            echo "waiting for ${SHA_IMAGE} (attempt ${i}/30)..."
+            sleep 20
+          done
           docker pull "$SHA_IMAGE"
           docker tag "$SHA_IMAGE" "$VER_IMAGE"
           docker push "$VER_IMAGE"
