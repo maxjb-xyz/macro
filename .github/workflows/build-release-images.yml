@@ -111,6 +111,22 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/buildcache:${{ matrix.image }}
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/buildcache:${{ matrix.image }},mode=max
 
+      # Flip the buildcache package to public so it doesn't consume private
+      # GHCR storage quota (the repo is public; the cache holds only compiled
+      # deps). Prefer GHCR_PAT because GITHUB_TOKEN can't always change package
+      # visibility; fail soft so this never blocks a release.
+      - name: Make buildcache public
+        continue-on-error: true
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "$GHCR_PAT" ]; then
+            export GH_TOKEN="$GHCR_PAT"
+          fi
+          gh api -X PATCH "user/packages/container/${{ github.event.repository.name }}%2Fbuildcache" \
+            -f visibility=public
+
   # Tag versioned images only (no :latest) when a v* tag is pushed.
   version-tag:
     if: startsWith(github.ref, 'refs/tags/v')
