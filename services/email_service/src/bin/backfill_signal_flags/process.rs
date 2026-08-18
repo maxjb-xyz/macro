@@ -132,7 +132,7 @@ pub async fn process_macro_id(
                                   SELECT 1 FROM email_message_labels ml
                                   JOIN email_labels l ON ml.label_id = l.id
                                   WHERE ml.message_id = m.id
-                                    AND l.name IN ('CATEGORY_PERSONAL', 'SENT', 'DRAFT')
+                                    AND l.name IN ('CATEGORY_PERSONAL', 'SENT', 'DRAFT', 'IMPORTANT', 'STARRED')
                               )
                               OR NOT EXISTS (
                                   SELECT 1 FROM email_message_labels ml
@@ -253,7 +253,7 @@ async fn verify_link(pool: &sqlx::PgPool, link_id: Uuid) -> anyhow::Result<u64> 
                                 SELECT 1 FROM email_message_labels ml
                                 JOIN email_labels l ON ml.label_id = l.id
                                 WHERE ml.message_id = m.id
-                                  AND l.name IN ('CATEGORY_PERSONAL', 'SENT', 'DRAFT')
+                                  AND l.name IN ('CATEGORY_PERSONAL', 'SENT', 'DRAFT', 'IMPORTANT', 'STARRED')
                             )
                             OR NOT EXISTS (
                                 SELECT 1 FROM email_message_labels ml

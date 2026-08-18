@@ -221,7 +221,7 @@ pub async fn resync_signal_flags_for_sender(
                                       SELECT 1 FROM email_message_labels ml
                                       JOIN email_labels l ON ml.label_id = l.id
                                       WHERE ml.message_id = m.id
-                                        AND l.name IN ('CATEGORY_PERSONAL', 'SENT', 'DRAFT')
+                                        AND l.name IN ('CATEGORY_PERSONAL', 'SENT', 'DRAFT', 'IMPORTANT', 'STARRED')
                                   )
                                   OR NOT EXISTS (
                                       SELECT 1 FROM email_message_labels ml
