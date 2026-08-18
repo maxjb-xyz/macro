@@ -104,10 +104,12 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:sha-${{ github.sha }}
             ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}:latest
           # cargo-chef (docker/Dockerfile) turns the dependency compile into a
-          # normal image layer so `type=gha` caches it; rebuilds only recompile
-          # changed source. The first build that warms the cache is still slow.
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # normal image layer, cached in GHCR via type=registry. Unlike type=gha
+          # (GitHub Actions cache), the registry cache is ref-independent, so a
+          # tag build restores the deps cached by the previous tag, and it has no
+          # 10 GB cap. Rebuilds only recompile changed source.
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/buildcache:${{ matrix.image }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/buildcache:${{ matrix.image }},mode=max
 
   # Tag versioned images only (no :latest) when a v* tag is pushed.
   version-tag:
