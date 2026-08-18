@@ -236,7 +236,45 @@ endpoints: `https://login.microsoftonline.com/<tenant>/v2.0/…`).
 
 ---
 
-## 5. AI model providers (bring-your-own-key)
+## 5. LiveKit calls
+
+Macro's call feature is a thin client over LiveKit: the backend (`crates/call`)
+only mints room tokens via the `livekit-api` crate, and the web/desktop/iOS
+clients connect to LiveKit directly for WebRTC media. LiveKit is the only
+supported SFU. Cloudflare Calls, Jitsi, and other SFUs are not drop-in
+replacements, so "pick a WebRTC provider" really means "pick a LiveKit
+provider".
+
+### 5a. Choose a provider
+
+| Path | Who it's for | Cost |
+| --- | --- | --- |
+| **LiveKit Cloud** (recommended default) | Any host, including behind Cloudflare Tunnel or CGNAT | Free tier: 5,000 WebRTC min + 50 GB egress/mo; then ~$0.004/min audio, ~$0.015/min video |
+| **Self-hosted LiveKit on a VPS** | Operators who want zero managed deps and have a box with a public IP + clean UDP | VPS cost only (`livekit-server` is Apache 2.0) |
+| Self-hosted LiveKit on the app host | Not supported | n/a |
+
+Why Cloud is the default: Cloudflare Tunnel (the recommended ingress here)
+carries HTTP/WebSocket only, and WebRTC media is UDP. A self-hosted LiveKit on
+the same box would signal fine but carry no media. Media needs a machine with
+public UDP (a VPS or a managed SFU). Pricing above is current as of writing;
+confirm on livekit.com/pricing.
+
+### 5b. Set env vars
+
+```bash
+# LiveKit Cloud (managed), or a self-hosted livekit-server on a VPS:
+LIVEKIT_SERVER_URL=wss://<project>.livekit.cloud
+LIVEKIT_API_KEY=<key>
+LIVEKIT_API_SECRET=<secret>
+```
+
+Transcription is the costly part, not calls: the optional
+`services/transcription/` agent consumes LiveKit AI-agent minutes + inference
+credits and is not required for basic calls.
+
+---
+
+## 6. AI model providers (bring-your-own-key)
 
 Macro's AI surface (chat models, AI editing, document cognition, projections)
 calls Anthropic, OpenAI, and Cerebras **directly** with keys you supply — there
@@ -259,7 +297,7 @@ user — so once the keys are set, every user can use the full model set.
 
 ---
 
-## 6. Verification checklist
+## 7. Verification checklist
 
 After setting the vars and creating the IdP(s), restart the affected services
 and confirm:
